@@ -1,4 +1,4 @@
-# Lastra Chat
+# Ramble
 
 Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based video, audio, screen sharing, instant messaging, file sharing, and AI bot integration with DiceBear avatars.
 
