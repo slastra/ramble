@@ -1,0 +1,39 @@
+# Dependencies
+node_modules
+
+# Build output
+.output
+.nuxt
+dist
+
+# Development
+.git
+.gitignore
+.vscode
+.idea
+*.log
+
+# Documentation
+*.md
+!README.md
+livekit.txt
+nuxt-ui.txt
+nuxt.txt
+
+# Testing
+coverage
+.nyc_output
+
+# Environment (handled by Coolify)
+.env
+.env.*
+
+# Uploads (persistent volume)
+uploads
+public/uploads
+
+# Misc
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

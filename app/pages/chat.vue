@@ -246,7 +246,7 @@ const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutp
                   size="2xs"
                   inset
                 >
-                  <div class="text-lg font-semibold">
+                  <div class="text-2xl font-semibold logo">
                     Ramble
                   </div>
                 </UChip>

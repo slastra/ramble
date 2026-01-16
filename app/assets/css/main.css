@@ -23,3 +23,9 @@ body {
   font-feature-settings: 'tnum';
   font-variant-numeric: tabular-nums;
 }
+
+/* Logo font styling */
+.logo {
+  font-family: "Cherry Bomb One", cursive;
+  text-transform: uppercase;
+}

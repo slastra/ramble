@@ -80,7 +80,8 @@ export default defineNuxtConfig({
   fonts: {
     families: [
       { name: 'Inter', provider: 'google' },
-      { name: 'Geist Mono', provider: 'google' }
+      { name: 'Geist Mono', provider: 'google' },
+      { name: 'Cherry Bomb One', provider: 'google' }
     ],
     defaults: {
       weights: [400, 500, 600, 700],

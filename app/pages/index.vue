@@ -66,7 +66,7 @@ function _useDifferentName() {
       <UContainer class="flex-1 flex flex-col justify-center items-center py-8">
         <UCard class="w-full max-w-xs" variant="subtle">
           <template #header>
-            <h1 class="text-2xl font-bold text-center">
+            <h1 class="text-2xl font-bold text-center logo">
               Ramble
             </h1>
           </template>
