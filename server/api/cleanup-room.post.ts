@@ -9,7 +9,8 @@ interface CleanupRequest {
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody<CleanupRequest>(event)
-    const { roomName, maxIdleMinutes = 1 } = body // Default to 1 minute
+    const { roomName, maxIdleMinutes: rawMaxIdle = 1 } = body // Default to 1 minute
+    const maxIdleMinutes = Math.max(1, Math.min(1440, Number(rawMaxIdle) || 1))
 
     // Validate required fields
     if (!roomName) {

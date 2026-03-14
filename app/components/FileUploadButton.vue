@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
+
+const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn | undefined
+
 interface FileUpload {
   url: string
   originalName: string
@@ -43,6 +47,7 @@ const uploadFiles = async () => {
 
   isUploading.value = true
   uploadProgress.value = 0
+  let progressInterval: ReturnType<typeof setInterval> | undefined
 
   try {
     // Convert selected files to nuxt-file-storage format
@@ -61,7 +66,7 @@ const uploadFiles = async () => {
     const filesData = await Promise.all(filePromises)
 
     // Simulate progress (since we don't have real progress from the server)
-    const progressInterval = setInterval(() => {
+    progressInterval = setInterval(() => {
       if (uploadProgress.value < 90) {
         uploadProgress.value += Math.random() * 20
       }
@@ -69,10 +74,10 @@ const uploadFiles = async () => {
 
     const response = await $fetch<UploadResponse>('/api/upload', {
       method: 'POST',
+      headers: liveKitRoom?.livekitToken.value ? { Authorization: `Bearer ${liveKitRoom.livekitToken.value}` } : {},
       body: { files: filesData }
     })
 
-    clearInterval(progressInterval)
     uploadProgress.value = 100
 
     if (response.success) {
@@ -100,6 +105,7 @@ const uploadFiles = async () => {
       color: 'error'
     })
   } finally {
+    clearInterval(progressInterval)
     isUploading.value = false
     uploadProgress.value = 0
   }

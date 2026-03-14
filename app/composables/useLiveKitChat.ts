@@ -19,6 +19,7 @@ export interface UseLiveKitChatOptions {
   userId: string
   userName: string
   maxHistorySize?: number
+  token?: Ref<string | null>
 }
 
 export interface UseLiveKitChatReturn {
@@ -43,7 +44,7 @@ export interface UseLiveKitChatReturn {
 }
 
 export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatReturn {
-  const { room, userId, userName, maxHistorySize = 1000 } = options
+  const { room, userId, userName, maxHistorySize = 1000, token } = options
 
   // Chat state
   const messageHistory = ref<LiveKitChatMessage[]>([])
@@ -207,6 +208,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     // Fire-and-forget, don't wait for response
     $fetch('/api/broadcast-message', {
       method: 'POST',
+      headers: token?.value ? { Authorization: `Bearer ${token.value}` } : {},
       body: {
         author: userName,
         content,
@@ -255,6 +257,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     // Broadcast to message bus for SSE clients (daemon notifications)
     $fetch('/api/broadcast-message', {
       method: 'POST',
+      headers: token?.value ? { Authorization: `Bearer ${token.value}` } : {},
       body: {
         author: botName,
         content,
@@ -311,26 +314,33 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     addMessageToHistory(message)
   }
 
+  // Named handler for participant disconnect cleanup
+  function handleParticipantDisconnected(participant: RemoteParticipant) {
+    typingUsersMap.value.delete(participant.identity)
+  }
+
   // Set up room event listeners
   function setupRoomListeners() {
     if (!room.value) return
 
     // Listen for data messages
-    room.value.on(RoomEvent.DataReceived, (data: Uint8Array, participant?: RemoteParticipant) => {
-      handleDataReceived(data, participant)
-    })
+    room.value.on(RoomEvent.DataReceived, handleDataReceived)
 
     // Clean up typing indicators when participants leave
-    room.value.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      typingUsersMap.value.delete(participant.identity)
-    })
+    room.value.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+  }
+
+  // Remove all listeners from a room instance
+  function removeRoomListeners(roomInstance: Room) {
+    roomInstance.off(RoomEvent.DataReceived, handleDataReceived)
+    roomInstance.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
   }
 
   // Watch for room changes
-  watch(room, (newRoom, oldRoom) => {
+  const stopRoomWatch = watch(room, (newRoom, oldRoom) => {
     // Remove old listeners if they exist
     if (oldRoom) {
-      oldRoom.off(RoomEvent.DataReceived, handleDataReceived)
+      removeRoomListeners(oldRoom)
     }
 
     // Set up new listeners
@@ -339,10 +349,14 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     }
   }, { immediate: true })
 
-  // Cleanup typing indicators on unmount
+  // Cleanup on unmount
   onUnmounted(() => {
     if (isTyping.value) {
       sendTypingIndicator(false)
+    }
+    stopRoomWatch()
+    if (room.value) {
+      removeRoomListeners(room.value)
     }
   })
 

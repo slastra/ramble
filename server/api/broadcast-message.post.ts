@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   if (!body.author || !body.content || !body.room) {
     throw createError({
       statusCode: 400,
-      message: 'Missing required fields: author, content, room'
+      statusMessage: 'Missing required fields: author, content, room'
     })
   }
 

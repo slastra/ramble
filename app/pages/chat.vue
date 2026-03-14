@@ -24,7 +24,8 @@ const liveKitRoom = useLiveKitRoom({
 const liveKitChat = useLiveKitChat({
   room: liveKitRoom.room,
   userId: clientId.value,
-  userName: userName.value || 'Anonymous'
+  userName: userName.value || 'Anonymous',
+  token: liveKitRoom.livekitToken
 })
 
 // Initialize LiveKit bot integration

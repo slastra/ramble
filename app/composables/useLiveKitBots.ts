@@ -142,6 +142,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
       // Call server API to generate AND send bot response
       await $fetch('/api/chat', {
         method: 'POST',
+        headers: liveKitRoom.livekitToken.value ? { Authorization: `Bearer ${liveKitRoom.livekitToken.value}` } : {},
         body: {
           roomName,
           message: `${userName}: ${userMessage}`, // Include userName in the message

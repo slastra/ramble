@@ -134,6 +134,14 @@ export const useSoundManager = () => {
       initializeAudio()
       testAudioPlayback()
     })
+
+    onUnmounted(() => {
+      audioCache.forEach((audio) => {
+        audio.pause()
+        audio.src = ''
+      })
+      audioCache.clear()
+    })
   }
 
   return {

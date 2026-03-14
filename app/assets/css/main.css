@@ -2,9 +2,9 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: "Space Grotesk", sans-serif;
-  --font-serif: "Space Grotesk", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Inter", sans-serif;
+  --font-mono: "Geist Mono", monospace;
 }
 
 :root {

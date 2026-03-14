@@ -11,12 +11,12 @@ const sseClients = new Map<string, SseClient>()
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const username = query.username as string
+  const username = typeof query.username === 'string' ? query.username.trim().slice(0, 100) : ''
 
   if (!username) {
     throw createError({
       statusCode: 400,
-      message: 'Username is required'
+      statusMessage: 'Username is required'
     })
   }
 

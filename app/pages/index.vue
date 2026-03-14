@@ -13,6 +13,7 @@ const _isReturningUser = computed(() => hasStoredUsername.value && state.name)
 
 async function validateAndJoin() {
   if (!state.name.trim()) return
+  if (loading.value) return
 
   loading.value = true
   error.value = ''

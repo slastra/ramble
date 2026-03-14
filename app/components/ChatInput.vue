@@ -108,6 +108,13 @@ const handleFilesUploaded = async (files: FileUpload[]) => {
   await sendMessageWithAttachments(message, files)
 }
 
+onUnmounted(() => {
+  if (typingTimer) {
+    clearTimeout(typingTimer)
+    typingTimer = null
+  }
+})
+
 const chatStatus = computed(() => {
   if (connectionStatus.value === 'connecting') return 'loading'
   return 'ready'

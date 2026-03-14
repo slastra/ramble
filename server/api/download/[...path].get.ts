@@ -42,10 +42,19 @@ export default defineEventHandler(async (event) => {
     const storageMountPath = process.env.FILE_STORAGE_MOUNT || './uploads'
     const absolutePath = resolve(process.cwd(), storageMountPath, storagePath.slice(1), filename ?? '')
 
+    // Path traversal protection: ensure resolved path stays within storage directory
+    const storageRoot = resolve(process.cwd(), storageMountPath)
+    if (!absolutePath.startsWith(storageRoot)) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Access denied'
+      })
+    }
+
     // Set headers for download with original filename
     if (originalName && typeof originalName === 'string') {
-      // Sanitize filename to prevent header injection
-      const sanitizedName = originalName.replace(/[\r\n]/g, '')
+      // Sanitize filename: allow only safe characters
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9._\- ()]/g, '_')
       setHeader(event, 'Content-Disposition', `attachment; filename="${sanitizedName}"`)
     }
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useDevicesList } from '@vueuse/core'
 import type { IngressInfo } from '#shared/types/ingress'
+import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
+
+const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn | undefined
 
 interface NtfyConfig {
   url: string
@@ -108,8 +111,14 @@ onMounted(async () => {
   ingressError.value = null
 
   try {
+    const headers: Record<string, string> = {}
+    if (liveKitRoom?.livekitToken.value) {
+      headers.Authorization = `Bearer ${liveKitRoom.livekitToken.value}`
+    }
+
     const response = await $fetch('/api/whip-ingress', {
       method: 'POST',
+      headers,
       body: {
         roomName: 'main-chat-room'
       }

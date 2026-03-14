@@ -66,7 +66,7 @@ export async function findBotByTrigger(message: string, event?: H3Event): Promis
   const bots = await loadBots(event)
 
   for (const bot of bots) {
-    const regex = new RegExp(`\\b(${bot.triggers.join('|')})\\b`, 'i')
+    const regex = new RegExp(`\\b(${bot.triggers.map(escapeRegex).join('|')})\\b`, 'i')
     if (regex.test(message)) {
       return bot
     }
@@ -80,7 +80,7 @@ export async function findAllBotsByTrigger(message: string, event?: H3Event): Pr
   const mentionedBots: BotConfig[] = []
 
   for (const bot of bots) {
-    const regex = new RegExp(`\\b(${bot.triggers.join('|')})\\b`, 'i')
+    const regex = new RegExp(`\\b(${bot.triggers.map(escapeRegex).join('|')})\\b`, 'i')
     if (regex.test(message)) {
       mentionedBots.push(bot)
     }
@@ -109,6 +109,10 @@ export async function checkRandomInterjections(userCount: number, disabledBots: 
   }
 
   return interjecting
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 // Keep the old function for backwards compatibility but have it use the new one

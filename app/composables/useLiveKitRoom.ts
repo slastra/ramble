@@ -100,6 +100,9 @@ export interface UseLiveKitRoomReturn {
   getVideoPublication: (participantIdentity: string, source?: 'camera' | 'screen_share') => RemoteTrackPublication | undefined
   setVideoQuality: (participantIdentity: string, quality: VideoQuality, source?: 'camera' | 'screen_share') => void
 
+  // Auth
+  livekitToken: Readonly<Ref<string | null>>
+
   // Events
   on: (event: string, handler: (...args: unknown[]) => void) => void
   off: (event: string, handler: (...args: unknown[]) => void) => void
@@ -115,6 +118,9 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
   // Connection state
   const connectionState = ref<ConnectionState>(ConnectionState.Disconnected)
   const roomState = ref<string>('disconnected')
+
+  // Auth token
+  const livekitToken = ref<string | null>(null)
 
   // Local media state
   const isCameraEnabled = ref(false)
@@ -277,6 +283,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
       const participantName = participant.name || participant.identity
       $fetch('/api/notify', {
         method: 'POST',
+        headers: livekitToken.value ? { Authorization: `Bearer ${livekitToken.value}` } : {},
         body: {
           userName: participantName,
           message: 'joined the chat',
@@ -412,6 +419,9 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
         room.value = initializeRoom()
       }
 
+      // Store token for authenticated API calls
+      livekitToken.value = tokenResponse.token
+
       // Connect to room
       const serverUrl = options.serverUrl || config.public.livekitUrl
       await room.value.connect(serverUrl, tokenResponse.token)
@@ -460,6 +470,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
       await room.value.disconnect()
       room.value = null
     }
+    livekitToken.value = null
     clearParticipantState()
     roomState.value = 'disconnected'
     connectionState.value = ConnectionState.Disconnected
@@ -679,6 +690,9 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
     getScreenShareAudioTrack,
     getVideoPublication,
     setVideoQuality,
+
+    // Auth
+    livekitToken: readonly(livekitToken),
 
     // Events
     on: eventEmitter.on,

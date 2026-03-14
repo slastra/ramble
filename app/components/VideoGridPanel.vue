@@ -260,11 +260,6 @@ watch([
   updateParticipants()
 }, { deep: true, immediate: false })
 
-// Also watch remote participants deeply to catch isCameraEnabled/isScreenShareEnabled changes
-watch(() => liveKitRoom?.remoteParticipants.value, () => {
-  updateParticipants()
-}, { deep: true, immediate: false })
-
 // Initialize GridStack
 onMounted(() => {
   updateParticipants()

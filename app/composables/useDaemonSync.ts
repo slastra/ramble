@@ -88,8 +88,9 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
   }
 
   // Watch chat visibility changes
+  let stopChatWatch: (() => void) | undefined
   if (chatVisible) {
-    watch(chatVisible, checkFocus)
+    stopChatWatch = watch(chatVisible, checkFocus)
   }
 
   // Setup event listeners
@@ -111,9 +112,9 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
     checkFocus()
   })
 
-  // Cleanup on unmount
+  // Cleanup on unmount - always clean up (removeEventListener is no-op if not registered)
   onUnmounted(() => {
-    if (!enabled) return
+    stopChatWatch?.()
 
     // Remove event listeners
     document.removeEventListener('visibilitychange', checkFocus)
@@ -127,7 +128,9 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
     }
 
     // Send final inactive status
-    sendStatus('inactive')
+    if (enabled) {
+      sendStatus('inactive')
+    }
   })
 
   return {

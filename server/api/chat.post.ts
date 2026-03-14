@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
 
     // Extract userName from the message if it's in "Name: content" format
     let userName = 'User'
-    let messageContent = message
+    let messageContent = message as string
     const colonIndex = message.indexOf(':')
     if (colonIndex > 0 && colonIndex < 20) { // Reasonable name length
       userName = message.substring(0, colonIndex).trim()

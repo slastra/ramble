@@ -52,6 +52,7 @@ onMounted(() => {
 
     // Set up ResizeObserver to automatically scroll when content resizes
     if (messagesContent.value) {
+      if (resizeObserver) resizeObserver.disconnect()
       resizeObserver = new ResizeObserver(() => {
         scrollToBottom()
       })

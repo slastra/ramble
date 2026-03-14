@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   ssr: false,
 
   devtools: {
-    enabled: true
+    enabled: process.env.NODE_ENV === 'development'
   },
 
   css: ['~/assets/css/main.css', 'gridstack/dist/gridstack.min.css'],

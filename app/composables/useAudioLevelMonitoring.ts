@@ -59,16 +59,7 @@ export function useAudioLevelMonitoring() {
       try {
         // Prefer using the raw MediaStreamTrack (if available) as source for analyser
         const maybeMediaStreamTrack = (audioTrack as unknown as { mediaStreamTrack?: MediaStreamTrack }).mediaStreamTrack
-        // Look up AudioContext constructor (handle vendor prefixes)
-        /* eslint-disable @typescript-eslint/no-explicit-any */
-        const AudioCtxCtor = (window as any).AudioContext || (window as any).webkitAudioContext
-        /* eslint-enable @typescript-eslint/no-explicit-any */
-        if (!AudioCtxCtor) {
-          // bail out - rely on ActiveSpeakersChanged fallback
-          audioLevels.value.set(participantIdentity, 0)
-          return
-        }
-        const ctx = new AudioCtxCtor()
+        const ctx = new AudioContext()
         let src: MediaElementAudioSourceNode | MediaStreamAudioSourceNode
         let analyser: AnalyserNode
         let audioEl: HTMLMediaElement | undefined
