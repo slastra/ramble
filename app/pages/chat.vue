@@ -3,7 +3,6 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const { loadBots } = useBots()
 const { clientId, userName } = useUser()
 
 const isReady = ref(false)
@@ -80,42 +79,43 @@ provide('liveKitRoom', liveKitRoom)
 provide('liveKitChat', liveKitChat)
 provide('liveKitBots', liveKitBots)
 
-onMounted(async () => {
-  // Middleware handles auth, safe to proceed
+// Named handlers for event listener cleanup
+const handleParticipantConnected = (participant: unknown) => {
+  const p = participant as { name?: string, identity: string }
+  const name = p.name || p.identity
+  liveKitChat.addLocalSystemMessage(`${name} joined the chat`)
+  const { playSound } = useSoundManager()
+  playSound('userJoined')
+}
 
-  // Load bots first
-  await loadBots()
+const handleParticipantDisconnected = (participant: unknown) => {
+  const p = participant as { name?: string, identity: string }
+  const name = p.name || p.identity
+  liveKitChat.addLocalSystemMessage(`${name} left the chat`)
+  const { playSound } = useSoundManager()
+  playSound('userLeft')
+}
 
-  // Set up system message listeners for participant events
-  liveKitRoom.on('participantConnected', (participant) => {
-    const p = participant as { name?: string, identity: string }
-    const name = p.name || p.identity
-    liveKitChat.addLocalSystemMessage(`${name} joined the chat`)
-    // Play join sound for other users
-    const { playSound } = useSoundManager()
-    playSound('userJoined')
-  })
+const handleConnected = () => {
+  isReady.value = true
+}
 
-  liveKitRoom.on('participantDisconnected', (participant) => {
-    const p = participant as { name?: string, identity: string }
-    const name = p.name || p.identity
-    liveKitChat.addLocalSystemMessage(`${name} left the chat`)
-    // Play leave sound for other users
-    const { playSound } = useSoundManager()
-    playSound('userLeft')
-  })
+const handleDisconnected = () => {
+  isReady.value = false
+}
 
-  // autoConnect is enabled, so connection happens automatically
-  liveKitRoom.on('connected', () => {
-    isReady.value = true
-  })
-
-  liveKitRoom.on('disconnected', () => {
-    isReady.value = false
-  })
+onMounted(() => {
+  liveKitRoom.on('participantConnected', handleParticipantConnected)
+  liveKitRoom.on('participantDisconnected', handleParticipantDisconnected)
+  liveKitRoom.on('connected', handleConnected)
+  liveKitRoom.on('disconnected', handleDisconnected)
 })
 
 onUnmounted(async () => {
+  liveKitRoom.off('participantConnected', handleParticipantConnected)
+  liveKitRoom.off('participantDisconnected', handleParticipantDisconnected)
+  liveKitRoom.off('connected', handleConnected)
+  liveKitRoom.off('disconnected', handleDisconnected)
   await liveKitRoom.disconnect()
 })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { setUserName, clientId, userName, hasStoredUsername, clearUser } = useUser()
+const { setUserName, clientId, userName } = useUser()
 const loading = ref(false)
 const error = ref('')
 const suggestions = ref<string[]>([])
@@ -7,9 +7,6 @@ const suggestions = ref<string[]>([])
 const state = reactive({
   name: userName.value || '' // Pre-fill with stored username
 })
-
-// Show welcome back message if username is stored
-const _isReturningUser = computed(() => hasStoredUsername.value && state.name)
 
 async function validateAndJoin() {
   if (!state.name.trim()) return
@@ -49,13 +46,6 @@ async function validateAndJoin() {
 
 function useSuggestion(suggestion: string) {
   state.name = suggestion
-  error.value = ''
-  suggestions.value = []
-}
-
-function _useDifferentName() {
-  clearUser()
-  state.name = ''
   error.value = ''
   suggestions.value = []
 }

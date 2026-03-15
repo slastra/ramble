@@ -10,7 +10,6 @@ export interface BotConfig extends Omit<BotsCollectionItem, 'triggers'> {
 export const useBots = () => {
   const bots = useState<BotConfig[]>('bots', () => [])
   const botsEnabled = useState<Record<string, boolean>>('botsEnabled', () => ({}))
-  const toast = useToast()
 
   // Load bots on client
   const loadBots = async () => {
@@ -30,30 +29,9 @@ export const useBots = () => {
     }
   }
 
-  // Toggle bot enabled state (sends to server)
-  const toggleBot = async (botName: string) => {
-    const newState = !botsEnabled.value[botName]
-
-    try {
-      // Send toggle request to server
-      await $fetch('/api/bot-toggle', {
-        method: 'POST',
-        body: {
-          botName,
-          enabled: newState
-        }
-      })
-
-      // Optimistically update local state
-      botsEnabled.value[botName] = newState
-    } catch (error) {
-      console.error('Failed to toggle bot:', error)
-      toast.add({
-        title: 'Failed to toggle bot',
-        description: 'Please try again',
-        color: 'error'
-      })
-    }
+  // Toggle bot enabled state (client-side only, no server persistence needed)
+  const toggleBot = (botName: string) => {
+    botsEnabled.value[botName] = !botsEnabled.value[botName]
   }
 
   // Check if a bot is enabled
@@ -69,7 +47,7 @@ export const useBots = () => {
         continue
       }
 
-      const regex = new RegExp(`\\b(${bot.triggers.join('|')})\\b`, 'i')
+      const regex = new RegExp(`\\b(${bot.triggers.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i')
       if (regex.test(message)) {
         return bot
       }

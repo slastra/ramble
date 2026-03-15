@@ -1,4 +1,5 @@
-import { AccessToken, RoomServiceClient, ParticipantInfo_State } from 'livekit-server-sdk'
+import { AccessToken, ParticipantInfo_State } from 'livekit-server-sdk'
+import { getRoomServiceClient } from '../utils/livekit'
 
 interface TokenRequest {
   roomName: string
@@ -31,12 +32,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Validate username uniqueness
-    const livekitApiUrl = livekitUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')
-    const roomService = new RoomServiceClient(
-      livekitApiUrl,
-      livekitKey,
-      livekitSecret
-    )
+    const roomService = getRoomServiceClient()
 
     try {
       const participants = await roomService.listParticipants(roomName)

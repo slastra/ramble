@@ -115,7 +115,7 @@ onUnmounted(() => {
   }
 })
 
-const chatStatus = computed(() => {
+const chatStatus = computed((): 'loading' | 'ready' => {
   if (connectionStatus.value === 'connecting') return 'loading'
   return 'ready'
 })
@@ -134,7 +134,7 @@ const chatStatus = computed(() => {
     <template #default>
       <div class="flex items-center gap-1">
         <FileUploadButton @files-uploaded="handleFilesUploaded" />
-        <UChatPromptSubmit :status="chatStatus as any" />
+        <UChatPromptSubmit :status="chatStatus" />
       </div>
     </template>
   </UChatPrompt>

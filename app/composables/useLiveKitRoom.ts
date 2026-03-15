@@ -108,6 +108,15 @@ export interface UseLiveKitRoomReturn {
   off: (event: string, handler: (...args: unknown[]) => void) => void
 }
 
+function safeParseMetadata(metadata: string | undefined, fallback: Record<string, unknown>): Record<string, unknown> {
+  if (!metadata) return fallback
+  try {
+    return JSON.parse(metadata) as Record<string, unknown>
+  } catch {
+    return fallback
+  }
+}
+
 export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomReturn {
   const config = useRuntimeConfig()
 
@@ -170,7 +179,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
     return {
       identity: participant.identity,
       name: participant.name || options.participantName,
-      metadata: participant.metadata ? JSON.parse(participant.metadata) : options.participantMetadata,
+      metadata: safeParseMetadata(participant.metadata, options.participantMetadata ?? {}),
       isCameraEnabled: participant.isCameraEnabled,
       isMicrophoneEnabled: participant.isMicrophoneEnabled,
       isScreenShareEnabled: participant.isScreenShareEnabled,
@@ -201,7 +210,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
       return {
         identity: participant.identity,
         name: participant.name || participant.identity,
-        metadata: participant.metadata ? JSON.parse(participant.metadata) : {},
+        metadata: safeParseMetadata(participant.metadata, {}),
         isCameraEnabled: participant.isCameraEnabled,
         isMicrophoneEnabled: participant.isMicrophoneEnabled,
         isScreenShareEnabled: participant.isScreenShareEnabled,

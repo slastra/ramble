@@ -9,7 +9,7 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
 
   // Track activity state
   let heartbeatInterval: NodeJS.Timeout | null = null
-  let isActive = false
+  const isActive = ref(false)
   const isDaemonConnected = ref(false)
 
   /**
@@ -39,8 +39,8 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
    * Mark app as active and start heartbeat
    */
   function setActive() {
-    if (isActive) return
-    isActive = true
+    if (isActive.value) return
+    isActive.value = true
 
     // Notify daemon
     sendStatus('active')
@@ -56,8 +56,8 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
    * Mark app as inactive and stop heartbeat
    */
   function setInactive() {
-    if (!isActive) return
-    isActive = false
+    if (!isActive.value) return
+    isActive.value = false
 
     // Notify daemon
     sendStatus('inactive')
@@ -134,7 +134,7 @@ export function useDaemonSync(chatVisible?: Ref<boolean>) {
   })
 
   return {
-    isActive: readonly(ref(isActive)),
+    isActive: readonly(isActive),
     isDaemonConnected: readonly(isDaemonConnected)
   }
 }

@@ -70,7 +70,7 @@ const getFileTypeBadge = (mimeType: string): string => {
 const downloadFile = async (attachment: FileAttachment) => {
   try {
     // Use fetch to trigger download
-    const downloadUrl = `/api/download${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`
+    const downloadUrl = `/api/download/${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`
 
     const response = await fetch(downloadUrl)
 
@@ -93,7 +93,7 @@ const downloadFile = async (attachment: FileAttachment) => {
   } catch (error) {
     console.error('Download failed:', error)
     // Fallback to direct link
-    window.open(`/api/download${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`, '_blank')
+    window.open(`/api/download/${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`, '_blank')
   }
 }
 </script>
