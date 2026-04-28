@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDevicesList } from '@vueuse/core'
+import type { DropdownMenuItem } from '@nuxt/ui'
 
 const props = defineProps<{
   webcamEnabled: boolean
@@ -69,8 +70,8 @@ const selectCamera = (deviceId: string) => {
 }
 
 // Build menu items dynamically
-const menuItems = computed(() => {
-  const items = []
+const menuItems = computed<DropdownMenuItem[][]>(() => {
+  const items: DropdownMenuItem[][] = []
 
   // Main toggles section with checkboxes
   items.push([
@@ -103,14 +104,14 @@ const menuItems = computed(() => {
   // Screen Settings will be added to settingsItems below
 
   // Build settings menu items
-  const settingsItems = []
+  const settingsItems: DropdownMenuItem[] = []
 
   // Audio Settings nested menu
-  const audioSettings = []
+  const audioSettings: DropdownMenuItem[] = []
 
   // Audio Input submenu
   if (microphones.value.length > 0) {
-    const audioInputChildren = microphones.value.map(mic => ({
+    const audioInputChildren: DropdownMenuItem[] = microphones.value.map(mic => ({
       label: mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`,
       type: 'checkbox',
       checked: selectedMicrophone.value === mic.deviceId,
@@ -126,7 +127,7 @@ const menuItems = computed(() => {
 
   // Audio Output submenu - only show if browser supports speaker selection
   if (speakers.value.length > 0 && props.supportsSpeakerSelection) {
-    const audioOutputChildren = speakers.value.map(speaker => ({
+    const audioOutputChildren: DropdownMenuItem[] = speakers.value.map(speaker => ({
       label: speaker.label || `Speaker ${speaker.deviceId.slice(0, 8)}`,
       type: 'checkbox',
       checked: selectedSpeaker.value === speaker.deviceId,
@@ -151,7 +152,7 @@ const menuItems = computed(() => {
 
   // Video Settings nested menu
   if (cameras.value.length > 0) {
-    const videoChildren = cameras.value.map(cam => ({
+    const videoChildren: DropdownMenuItem[] = cameras.value.map(cam => ({
       label: cam.label || `Camera ${cam.deviceId.slice(0, 8)}`,
       type: 'checkbox',
       checked: selectedCamera.value === cam.deviceId,

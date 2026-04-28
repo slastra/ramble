@@ -17,7 +17,7 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **WHIP Ingress**: Stream from OBS Studio directly to LiveKit rooms via WHIP protocol
 
 ### AI Integration
-- **Multiple AI Bots**: Configurable bots powered by Google Gemini
+- **Multiple AI Bots**: Configurable bots powered by Claude Haiku 4.5 via AWS Bedrock
 - **Natural Language Triggers**: Activate bots via @mentions
 - **Context-Aware Responses**: Bots use conversation history for relevant responses
 - **Bot Management**: Enable/disable bots through UI with persistent state
@@ -41,24 +41,27 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 
 ## Technology Stack
 
-- **Framework**: Nuxt 4.1.2, Vue 3.5.21, TypeScript 5.9.2
-- **WebRTC**: LiveKit Client 2.15.8, LiveKit Server SDK 2.14.0 (SFU architecture)
-- **UI Library**: Nuxt UI v4.0.0 (stable)
+See `package.json` for exact versions.
+
+- **Framework**: Nuxt 4 + Vue 3 + TypeScript
+- **WebRTC**: LiveKit Client + Server SDK (SFU architecture)
+- **UI Library**: Nuxt UI v4
 - **Typography**: Nuxt Fonts with Inter and Geist Mono (Google Fonts)
-- **Avatars**: DiceBear Core 9.2.4 with Identicon style
-- **AI Provider**: Google Generative AI 1.22.0 (Gemini 2.5)
+- **Avatars**: DiceBear (identicon style)
+- **AI Provider**: Claude (Anthropic) via AWS Bedrock — Haiku 4.5 by default
 - **Real-time**: LiveKit data channels for messaging
-- **File Storage**: nuxt-file-storage 0.3.0 with organized date-based structure
-- **Video Layout**: GridStack 12.3.3 for draggable video tiles
-- **Notifications**: ntfy.sh integration
-- **Package Manager**: pnpm 10.15.1
+- **File Storage**: nuxt-file-storage with date-based directory structure
+- **Video Layout**: GridStack for draggable video tiles
+- **Notifications**: ntfy.sh integration (push) + optional ramble-daemon (native desktop)
+- **Package Manager**: pnpm
 
 ## Setup
 
 ### Prerequisites
-- Node.js 18+
-- pnpm 10.15.1
+- Node.js 22+
+- pnpm
 - LiveKit Server (for WebRTC functionality)
+- AWS account with Bedrock access (for AI bots) — credentials picked up from the standard chain (`~/.aws/credentials`, env vars, IAM role). Haiku 4.5 requires the `us.` cross-region inference profile (already the default).
 - LiveKit Ingress (optional, for OBS streaming via WHIP)
 
 ### Installation
@@ -71,8 +74,9 @@ pnpm install
 2. Configure environment:
 ```bash
 # .env
-GEMINI_API_KEY=your-gemini-api-key       # Required for AI bots
-GEMINI_MODEL=gemini-2.0-flash-exp        # Default AI model
+AWS_REGION=us-east-1                                         # AWS region for Bedrock
+BEDROCK_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0    # Bedrock model/inference profile
+# AWS credentials are picked up from the standard chain (~/.aws/credentials, env vars, IAM role)
 LIVEKIT_KEY=devkey                       # LiveKit API key (use 'devkey' for dev mode)
 LIVEKIT_SECRET=secret                    # LiveKit API secret (use 'secret' for dev mode)
 LIVEKIT_URL=ws://localhost:7880          # LiveKit server URL (dev mode)
@@ -149,13 +153,16 @@ Create YAML files in `content/bots/`:
 name: "Assistant"
 role: "Helpful Assistant"
 triggers: [assistant, help]
-model: "gemini-2.0-flash-exp"
-shyness: 0.5
-temperature:
-  normal: 0.7
-  interjection: 0.9
+shyness: 0.5            # 0 = always interjects, 1 = never interjects
+temperature:            # 0-1 range (Anthropic API)
+  normal: 0.7           # Used when @mentioned or trigger word matches
+  interjection: 0.85    # Used for random interjections
 personality:
   normal: "You are a helpful assistant..."
+  interjection: "..."
+# Optional: pin to a specific Bedrock model/inference profile for this bot.
+# Defaults to BEDROCK_MODEL env var.
+# model: "us.anthropic.claude-sonnet-4-6-20250929-v1:0"
 ```
 
 ## Commands
@@ -170,22 +177,25 @@ pnpm run lint        # ESLint with auto-fix
 
 ## API Endpoints
 
-### LiveKit Integration
-- `POST /api/livekit-token` - Generate access tokens
-- `POST /api/whip-ingress` - Create/retrieve WHIP ingress for OBS streaming
-- `POST /api/chat` - Process AI bot messages
+### LiveKit & Identity
+- `POST /api/livekit-token` — Generate room access tokens
+- `POST /api/whip-ingress` — Create/retrieve WHIP ingress for OBS streaming
+- `POST /api/validate-username` — Check username availability (recognizes returning users via clientId)
+- `POST /api/cleanup-room` — Force-clean stale rooms
 
-### File Management
-- `POST /api/upload` - Upload files with validation and storage
-- `GET /api/download/[...path]` - Download files with original filenames
-- `POST /api/validate-username` - Check username availability
+### Bots
+- `GET /api/bots` — List bot configurations from `content/bots/*.yaml`
+- `POST /api/chat` — Generate a bot reply via Claude/Bedrock and post it to the room. Body: `{roomName, userName, content, botName, isInterjection, context}`. Bot enable/disable is fully client-side (localStorage).
+- `POST /api/broadcast-message` — Server-initiated room broadcast
 
-### Bot Management
-- `GET /api/bots` - Retrieve bot configurations
-- `POST /api/bot-toggle` - Enable/disable bots
+### Files
+- `POST /api/upload` — Upload with MIME validation and size limits
+- `GET /api/download/[...path]` — Download with original filename preserved
 
 ### Notifications
-- `POST /api/notify` - Send ntfy.sh notifications for messages
+- `POST /api/notify` — Send ntfy.sh push notification
+- `GET /api/ntfy-config` — Returns the public ntfy URL/topic for the client
+- `GET /api/events?username=X` — SSE stream of room messages for the ramble-daemon
 
 ## File Upload System
 
@@ -208,7 +218,7 @@ uploads/
 ```
 
 ### File Upload Architecture
-- **Module**: nuxt-file-storage 0.3.0 for production-ready file handling
+- **Module**: nuxt-file-storage for production-ready file handling
 - **Upload**: `POST /api/upload` with MIME validation and size limits
 - **Download**: `GET /api/download/[...path]` with original filename preservation
 - **Security**: Sanitized filenames, validated MIME types, absolute path resolution
@@ -225,15 +235,25 @@ The application uses DiceBear to generate unique identicon-style avatars:
 
 ## Architecture
 
-### Composables
-- **useLiveKitRoom**: Core room connection, media tracks, participant management
+### Composables (`app/composables/`)
+
+**LiveKit core:**
+- **useLiveKitRoom**: Room connection, media tracks, participant management
 - **useLiveKitChat**: Chat messaging via data channels, typing indicators
-- **useLiveKitBots**: AI bot integration with LiveKit data channels
-- **useDiceBearAvatar**: Avatar generation using DiceBear identicon style
-- **useSoundManager**: Audio notification system with localStorage preferences
-- **useUser**: User state management with persistent identity (cookie-based clientId + localStorage username)
-- **useSoundSettings**: Sound notification preferences with volume control and event mapping
-- **useDevicePreferences**: Camera, microphone, and speaker preferences persistence
+- **useLiveKitBots**: Bot mention/interjection detection, calls `/api/chat`
+- **useAudioLevelMonitoring**: WebAudio analyser + RMS level calculation
+- **useDeviceManagement**: Camera/mic/speaker enumeration and `switchActiveDevice` wrapper
+- **useParticipantTracking**: Track subscription state and remote participant lifecycle
+- **useEventEmitter**: Tiny generic pub-sub used inside the LiveKit composables
+
+**User & UX:**
+- **useUser**: Persistent identity (cookie clientId + localStorage username)
+- **useBots**: Loads bot configs and runs client-side mention detection
+- **useDiceBearAvatar**: Identicon-style avatar URL generator
+- **useSoundManager**: Plays notification sounds
+- **useSoundSettings**: Sound preference persistence (volume + per-event mapping)
+- **useDevicePreferences**: Camera/mic/speaker selection persistence
+- **useDaemonSync**: Browser focus/visibility heartbeats to the optional ramble-daemon
 
 ### Type Organization
 - `/shared/types/` - Types shared between client and server
@@ -244,6 +264,12 @@ The application uses DiceBear to generate unique identicon-style avatars:
 - `/server/utils/` - Server utilities including LiveKit client singleton
 
 ### Recent Updates
+
+**April 2026 — AI provider migration:**
+- **Bedrock + Claude**: AI bots now run on Claude Haiku 4.5 via AWS Bedrock (replaces Google Gemini). Credentials via standard AWS chain; no API key in env.
+- **Structured chat protocol**: `/api/chat` accepts `{userName, content, botName, isInterjection, context}` instead of a `"Name: content"` string. Removed server-side string parsing.
+- **Bot temperature**: now constrained to Anthropic's `0–1` range (was Gemini's `0–2`); schema enforces it.
+- **Vestigial fields removed**: `tools` dropped from bot YAML schema; `userCount` and `_isInterjection` removed from `/api/chat`.
 
 **October 2025:**
 - **User Preferences**: Cookie-based persistent identity, remembered device selections, sound preferences

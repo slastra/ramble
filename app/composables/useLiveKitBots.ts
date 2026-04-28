@@ -139,13 +139,13 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
 
       // Note: Current message is NOT added here - server handles it to avoid duplication
 
-      // Call server API to generate AND send bot response
       await $fetch('/api/chat', {
         method: 'POST',
         headers: liveKitRoom.livekitToken.value ? { Authorization: `Bearer ${liveKitRoom.livekitToken.value}` } : {},
         body: {
           roomName,
-          message: `${userName}: ${userMessage}`, // Include userName in the message
+          userName,
+          content: userMessage,
           context,
           botName: bot.name,
           isInterjection: !isMention

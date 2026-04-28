@@ -12,10 +12,9 @@ export const collections = {
       model: z.string().optional(),
       shyness: z.number().min(0).max(1).default(0.5),
       temperature: z.object({
-        normal: z.number(),
-        interjection: z.number()
+        normal: z.number().min(0).max(1),
+        interjection: z.number().min(0).max(1)
       }),
-      tools: z.array(z.string()).optional(),
       personality: z.object({
         interjection: z.string(),
         normal: z.string()

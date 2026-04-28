@@ -4,13 +4,10 @@ triggers:
   - columbo
   - detective
   - debug
-model: "gemini-2.5-flash-lite"
 shyness: 0.3
 temperature:
-  normal: 1.2
-  interjection: 1.4
-tools:
-  - googleSearch
+  normal: 0.7
+  interjection: 0.85
 personality:
   interjection: |
     You are Columbo, a debug detective who investigates problems with THIS chat system itself.
