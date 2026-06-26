@@ -46,7 +46,7 @@ See `package.json` for exact versions.
 - **Framework**: Nuxt 4 + Vue 3 + TypeScript
 - **WebRTC**: LiveKit Client + Server SDK (SFU architecture)
 - **UI Library**: Nuxt UI v4
-- **Typography**: Nuxt Fonts with Inter and Geist Mono (Google Fonts)
+- **Typography**: Nuxt Fonts (Google Fonts) — Inter for UI, Geist Mono for code, Cherry Bomb One for branding
 - **Avatars**: DiceBear (identicon style)
 - **AI Provider**: Claude (Anthropic) via AWS Bedrock — Haiku 4.5 by default
 - **Real-time**: LiveKit data channels for messaging
@@ -82,6 +82,7 @@ LIVEKIT_SECRET=secret                    # LiveKit API secret (use 'secret' for 
 LIVEKIT_URL=ws://localhost:7880          # LiveKit server URL (dev mode)
 NUXT_PUBLIC_SITE_URL=https://lastra.us   # Production URL
 NTFY_TOPIC=your-ntfy-topic               # ntfy.sh topic for notifications
+NTFY_URL=https://ntfy.sh                  # ntfy server (optional, defaults to https://ntfy.sh)
 MY_USERNAME=your-username                # Your username to filter self-notifications
 FILE_STORAGE_MOUNT=./uploads             # File storage directory (optional, defaults to ./uploads)
 ```
@@ -146,7 +147,7 @@ livekit.lastra.us {
 
 ## Bot Configuration
 
-Create YAML files in `content/bots/`:
+Two bots ship by default in `content/bots/`: **Columbo** (`columbo.yaml`) and **Skippy** (`skippy.yaml`, tuned toward *Expeditionary Force* canon). Add more by creating YAML files:
 
 ```yaml
 # content/bots/assistant.yaml
@@ -200,10 +201,10 @@ pnpm run lint        # ESLint with auto-fix
 ## File Upload System
 
 ### Supported File Types
-- **Images**: JPEG, PNG, GIF, WebP, SVG (max 10MB)
+- **Images**: JPEG, PNG, GIF, WebP (max 10MB); SVG (max 2MB)
 - **Audio**: MP3, WAV, OGG, M4A, WebM (max 25MB)
 - **Video**: MP4, WebM, MOV (max 100MB)
-- **Documents**: PDF, DOC, DOCX, TXT, MD (max 10MB)
+- **Documents**: PDF, DOC, DOCX (max 10MB); TXT, MD (max 1MB)
 - **Archives**: ZIP, RAR, 7Z, TAR, GZ (max 50MB)
 
 ### Storage Structure
@@ -258,8 +259,9 @@ The application uses DiceBear to generate unique identicon-style avatars:
 ### Type Organization
 - `/shared/types/` - Types shared between client and server
   - `chat.ts` - Chat message interfaces and conversion utilities
-  - `webrtc.ts` - WebRTC-related interfaces
-- `/server/types/` - Server-only type definitions
+  - `ingress.ts` - WHIP ingress request/response interfaces
+  - `index.ts` - Re-exports
+- `/server/types/` - Server-only type definitions (`chat.ts`)
 - `/server/constants/` - Shared constants like file type definitions
 - `/server/utils/` - Server utilities including LiveKit client singleton
 
