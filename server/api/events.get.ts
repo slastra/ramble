@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   })
 
   // Create unique client ID
-  const clientId = `${username}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const clientId = `${username}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 
   // Get message bus
   const messageBus = getMessageBus()

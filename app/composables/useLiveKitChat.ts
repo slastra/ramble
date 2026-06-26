@@ -93,7 +93,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
 
   // Generate unique message ID
   function generateMessageId(): string {
-    return `${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    return `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   }
 
   // Add message to history
