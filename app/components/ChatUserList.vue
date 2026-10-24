@@ -29,7 +29,7 @@ const sortedUsers = computed(() => {
   }
 
   return users
-    .filter(user => !user.identity?.startsWith('ai-')) // Filter out bots
+    .filter(user => !isHiddenFromChat(user.identity)) // Hide bots, OBS stream, and view-only participants
     .map(user => ({
       userId: user.identity,
       userName: user.name || user.identity,

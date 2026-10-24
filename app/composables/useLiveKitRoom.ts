@@ -221,9 +221,15 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
     }).filter(Boolean) as LiveKitParticipant[]
   })
 
-  const participantCount = computed(() =>
-    (room.value?.numParticipants || 0)
-  )
+  // Count only real chat users (exclude bots, the OBS ingress stream, and
+  // view-only /ingress participants) so bot interjection math isn't skewed.
+  const participantCount = computed(() => {
+    const remoteRealCount = remoteParticipants.value
+      .filter(p => !isHiddenFromChat(p.identity)).length
+    const localIdentity = room.value?.localParticipant?.identity
+    const localCount = localIdentity && !isHiddenFromChat(localIdentity) ? 1 : 0
+    return remoteRealCount + localCount
+  })
 
   // Initialize room
   function initializeRoom(): Room {

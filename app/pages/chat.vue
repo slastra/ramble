@@ -58,8 +58,8 @@ const humanUserCount = computed(() => {
     users.push(...liveKitRoom.remoteParticipants.value)
   }
 
-  // Filter out bots (same logic as ChatUserList)
-  return users.filter(user => !user.identity?.startsWith('ai-')).length
+  // Exclude bots, the OBS stream, and view-only participants (same logic as ChatUserList)
+  return users.filter(user => !isHiddenFromChat(user.identity)).length
 })
 
 // Track if chat sidebar is open
