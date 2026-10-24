@@ -1,16 +1,9 @@
 import { generateBotResponse } from '../utils/openrouter'
 import { loadBots } from '../utils/bots'
-import { sendBotMessage } from '../utils/livekitBot'
+import { getRoomRoster } from '../utils/botContext'
+import { sendBotMessage, sendBotTyping } from '../utils/livekitBot'
 import type { ChatMessage } from '../types/chat'
-
-interface ChatRequestBody {
-  roomName?: string
-  userName?: string
-  content?: string
-  botName?: string
-  isInterjection?: boolean
-  context?: { role: string, userName: string, content: string }[]
-}
+import type { BotChatRequest, BotChatResponse } from '../../shared/types/chat'
 
 // Strip leading "Name:" prefix the model occasionally emits despite system-prompt guidance.
 function stripBotNamePrefix(response: string, botName: string): string {
@@ -18,24 +11,27 @@ function stripBotNamePrefix(response: string, botName: string): string {
   return response.replace(new RegExp(`^\\*{0,2}${escaped}\\*{0,2}\\s*:\\s*`, 'i'), '').trim()
 }
 
-export default defineEventHandler(async (event) => {
-  const body = await readBody<ChatRequestBody>(event)
-  const { roomName, userName, content, botName, isInterjection, context } = body
+export default defineEventHandler(async (event): Promise<BotChatResponse> => {
+  const body = await readBody<Partial<BotChatRequest>>(event)
+  const { roomName, userName, content, botNames, isInterjection, context, activeBots, timeZone } = body
 
-  if (!roomName || !userName || !content || !botName) {
+  if (!roomName || !userName || !content || !Array.isArray(botNames) || botNames.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'roomName, userName, content, and botName are required'
+      statusMessage: 'roomName, userName, content, and botNames are required'
     })
   }
 
-  const bot = (await loadBots(event)).find(b => b.name === botName)
-  if (!bot) {
+  const allBots = await loadBots(event)
+  const bots = botNames
+    .map(name => allBots.find(b => b.name === name))
+    .filter(bot => bot !== undefined)
+  if (bots.length === 0) {
     throw createError({ statusCode: 404, statusMessage: 'Bot not found' })
   }
 
   const now = Date.now()
-  const recentMessages: ChatMessage[] = (context ?? []).map((msg, i) => ({
+  const history: ChatMessage[] = (context ?? []).map((msg, i) => ({
     id: `ctx-${now}-${i}`,
     userId: msg.role === 'model' ? `bot-${msg.userName}` : 'user',
     userName: msg.userName,
@@ -43,27 +39,53 @@ export default defineEventHandler(async (event) => {
     timestamp: now,
     type: msg.role === 'model' ? 'bot' : 'user'
   }))
-
-  const currentMessage: ChatMessage = {
+  history.push({
     id: `msg-${now}`,
     userId: 'user',
     userName,
     content,
     timestamp: now,
     type: 'user'
+  })
+
+  const roster = await getRoomRoster(roomName)
+  const presentBots = [...new Set([...(activeBots ?? []), ...bots.map(b => b.name)])]
+  const replies: { botName: string, content: string }[] = []
+
+  // Bots answer one at a time so each later bot sees the earlier replies.
+  for (const bot of bots) {
+    sendBotTyping(roomName, bot.name, true).catch(() => {})
+    try {
+      const response = await generateBotResponse({
+        bot,
+        history,
+        isInterjection: isInterjection ?? false,
+        room: {
+          roster,
+          otherBots: presentBots.filter(name => name !== bot.name),
+          timeZone
+        }
+      })
+      const reply = stripBotNamePrefix(response, bot.name)
+      await sendBotMessage(roomName, bot.name, reply)
+
+      history.push({
+        id: `reply-${Date.now()}-${bot.name}`,
+        userId: `bot-${bot.name}`,
+        userName: bot.name,
+        content: reply,
+        timestamp: Date.now(),
+        type: 'bot'
+      })
+      replies.push({ botName: bot.name, content: reply })
+    } catch (error) {
+      console.error(`[chat.post] Failed to deliver ${bot.name}'s response:`, error)
+    } finally {
+      sendBotTyping(roomName, bot.name, false).catch(() => {})
+    }
   }
 
-  try {
-    const response = await generateBotResponse({
-      bot,
-      message: currentMessage,
-      recentMessages,
-      isInterjection: isInterjection ?? false
-    })
-    await sendBotMessage(roomName, botName, stripBotNamePrefix(response, botName))
-    return { success: true as const }
-  } catch (error) {
-    console.error('[chat.post] Failed to generate bot response:', error)
-    return { success: false as const, error: 'Bot response failed' }
-  }
+  return replies.length > 0
+    ? { success: true, replies }
+    : { success: false, error: 'Bot response failed' }
 })

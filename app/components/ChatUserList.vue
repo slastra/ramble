@@ -6,14 +6,13 @@ const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
 const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
 const { bots, toggleBot, isBotEnabled } = useBots()
 
-// Generate avatars for users
-const getUserAvatar = (userName: string, isBot: boolean) => {
-  if (isBot) {
-    return { icon: 'i-lucide-bot' }
-  }
-  const avatarUrl = useDiceBearAvatar(userName)
+// Generate avatars for users and bots
+const getAvatar = (name: string, kind: 'user' | 'bot' = 'user') => {
+  const avatarUrl = useDiceBearAvatar(name, kind)
   return { src: avatarUrl.value }
 }
+
+const isTyping = (name: string) => liveKitChat?.typingUsers.value?.includes(name) || false
 
 const sortedUsers = computed(() => {
   const users = []
@@ -38,7 +37,7 @@ const sortedUsers = computed(() => {
         microphone: user.isMicrophoneEnabled,
         screen: user.isScreenShareEnabled
       },
-      isTyping: liveKitChat?.typingUsers.value?.includes(user.name || user.identity) || false
+      isTyping: isTyping(user.name || user.identity)
     }))
     .sort((a, b) => a.userName.localeCompare(b.userName))
 })
@@ -59,11 +58,9 @@ const sortedUsers = computed(() => {
                 ? 'typing...'
                 : user.userId === liveKitRoom?.localParticipant.value?.identity
                   ? 'You'
-                  : user.userId?.startsWith('ai-')
-                    ? 'AI Assistant'
-                    : 'Active now'
+                  : 'Active now'
             "
-            :avatar="getUserAvatar(user.userName, user.userId?.startsWith('ai-') || false)"
+            :avatar="getAvatar(user.userName)"
             size="sm"
           />
 
@@ -105,10 +102,8 @@ const sortedUsers = computed(() => {
           >
             <UUser
               :name="bot.name"
-              :description="bot.role"
-              :avatar="{
-                icon: 'i-lucide-bot'
-              }"
+              :description="isTyping(bot.name) ? 'typing...' : bot.role"
+              :avatar="getAvatar(bot.name, 'bot')"
               size="sm"
             />
             <USwitch

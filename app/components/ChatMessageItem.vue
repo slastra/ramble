@@ -2,21 +2,6 @@
 import type { ChatMessage } from '../../shared/types/chat'
 import { useTimeAgo } from '@vueuse/core'
 
-interface FileAttachment {
-  url: string
-  originalName: string
-  mimeType: string
-  size: number
-  type: 'image' | 'video' | 'audio' | 'document' | 'archive'
-  uploadedAt: string
-}
-
-interface MessageWithAttachments {
-  type: 'message'
-  content: string
-  attachments: FileAttachment[]
-}
-
 const props = defineProps<{
   message: ChatMessage
 }>()
@@ -43,29 +28,14 @@ const exactTime = computed(() => {
 
 // Parse message content to detect attachments
 const parsedMessage = computed(() => {
-  try {
-    // Try to parse as JSON (messages with attachments)
-    const parsed = JSON.parse(props.message.content) as MessageWithAttachments
-    if (parsed.type === 'message' && parsed.attachments) {
-      return {
-        content: parsed.content || '',
-        attachments: parsed.attachments
-      }
-    }
-  } catch {
-    // Not JSON, treat as plain text
-  }
-
-  return {
-    content: props.message.content,
-    attachments: []
-  }
+  const { text, attachments } = parseMessageContent(props.message.content)
+  return { content: text, attachments }
 })
 
 const hasAttachments = computed(() => parsedMessage.value.attachments.length > 0)
 
-// DiceBear avatar for user messages
-const userAvatarUrl = useDiceBearAvatar(props.message.userName)
+// DiceBear avatar: identicon for people, robot face for bots
+const avatarUrl = useDiceBearAvatar(props.message.userName, isAIMessage.value ? 'bot' : 'user')
 </script>
 
 <template>
@@ -89,18 +59,11 @@ const userAvatarUrl = useDiceBearAvatar(props.message.userName)
   >
     <div :class="['flex gap-3 max-w-[70%]', isOwnMessage ? 'flex-row-reverse' : 'flex-row']">
       <!-- Avatar -->
-      <div v-if="isAIMessage" class="mt-5 shrink-0">
-        <UAvatar
-          :alt="message.userName"
-          icon="i-lucide-bot"
-          size="lg"
-        />
-      </div>
-      <div v-else class="mt-5 shrink-0">
+      <div class="mt-5 shrink-0">
         <img
-          :src="userAvatarUrl"
+          :src="avatarUrl"
           :alt="message.userName"
-          class="w-10 h-10 rounded-full"
+          :class="['w-10 h-10', isAIMessage ? 'rounded-lg' : 'rounded-full']"
         >
       </div>
 

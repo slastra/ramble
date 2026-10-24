@@ -133,6 +133,10 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
       return
     }
 
+    // A real message from someone ends their typing indicator (the bots' "stop"
+    // packet is sent lossy and may be dropped or arrive first)
+    typingUsersMap.value.delete(message.userId)
+
     // Add regular messages to history
     addMessageToHistory(message)
 

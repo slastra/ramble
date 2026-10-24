@@ -30,7 +30,7 @@ export default defineEventHandler(async (event): Promise<CreateIngressResponse> 
     const ingressClient = new IngressClient(livekitApiUrl, livekitKey, livekitSecret)
 
     // Fixed participant identity for OBS stream
-    const participantIdentity = 'obs-stream'
+    const participantIdentity = OBS_STREAM_IDENTITY
     const ingressName = `${roomName}-whip`
 
     // Check if ingress already exists for this room

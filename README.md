@@ -18,9 +18,11 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 
 ### AI Integration
 - **Multiple AI Bots**: Configurable bots powered by DeepSeek V4.1 Flash via OpenRouter
-- **Natural Language Triggers**: Activate bots via @mentions
-- **Context-Aware Responses**: Bots use conversation history for relevant responses
-- **Bot Management**: Enable/disable bots through UI with persistent state
+- **Natural Language Triggers**: Activate bots by name or trigger word; mention several and each replies in turn, seeing the earlier replies
+- **Context-Aware Responses**: Bots see recent conversation history, who's in the room, the local time, and which other bots are around
+- **Vision**: Bots see images shared in the chat (newest three, up to 5MB each)
+- **Typing Indicator**: "Skippy is typing..." while a reply is being generated
+- **Bot Management**: Enable/disable bots through UI; choices persist in localStorage
 
 ### User Experience
 - **Media Controls**: Intuitive controls for camera, microphone, and screen sharing
@@ -186,7 +188,7 @@ pnpm run lint        # ESLint with auto-fix
 
 ### Bots
 - `GET /api/bots` — List bot configurations from `content/bots/*.yaml`
-- `POST /api/chat` — Generate a bot reply via OpenRouter and post it to the room. Body: `{roomName, userName, content, botName, isInterjection, context}`. Bot enable/disable is fully client-side (localStorage).
+- `POST /api/chat` — Generate bot replies via OpenRouter and post them to the room. Body: `BotChatRequest` in `shared/types/chat.ts` (`{roomName, userName, content, botNames, isInterjection, context, activeBots?, timeZone?}`); `content` may be a JSON attachment envelope. Returns `{success, replies}`. Bot enable/disable is fully client-side (localStorage).
 - `POST /api/broadcast-message` — Server-initiated room broadcast
 
 ### Files
@@ -271,6 +273,8 @@ The application uses DiceBear to generate unique identicon-style avatars:
 - **AI provider**: bots moved from Claude on AWS Bedrock to OpenRouter. Default model is `deepseek/deepseek-v4.1-flash-1017`, picked from a persona bake-off: fastest replies, about 6x cheaper than Haiku 4.5, and it honors per-bot temperature. Set `OPENROUTER_API_KEY`; AWS credentials are no longer used.
 - **No SDK**: the server calls OpenRouter's chat completions endpoint with `$fetch`; the `@anthropic-ai/*` packages and the Bedrock IAM script were removed.
 - **Chat participants**: the OBS ingress stream and `/ingress` viewers are hidden from the user list and excluded from bot interjection math.
+- **Smarter bots**: room awareness (roster, local time, other bots, chat conventions), vision on shared images, a typing indicator, multi-bot mentions answered in sequence, replies trimmed to the last full sentence if they hit the token limit, and per-bot robot avatars.
+- **Fixes**: bot on/off toggles now persist across reloads; bot replies now reach the ramble-daemon SSE stream.
 
 **April 2026 — AI provider migration:**
 - **Bedrock + Claude**: AI bots now run on Claude Haiku 4.5 via AWS Bedrock (replaces Google Gemini). Credentials via standard AWS chain; no API key in env.

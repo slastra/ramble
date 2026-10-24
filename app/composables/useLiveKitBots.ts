@@ -1,6 +1,7 @@
 import type { UseLiveKitChatReturn, LiveKitChatMessage } from './useLiveKitChat'
 import type { UseLiveKitRoomReturn } from './useLiveKitRoom'
 import type { BotConfig } from './useBots'
+import type { BotChatRequest, BotChatResponse, BotContextMessage } from '../../shared/types/chat'
 
 interface UseLiveKitBotsOptions {
   liveKitChat: UseLiveKitChatReturn
@@ -13,7 +14,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
   const { liveKitChat, liveKitRoom, userId: _userId, userName } = options
 
   // Re-use existing bot logic
-  const { bots, loadBots, toggleBot, isBotEnabled, detectBotMention } = useBots()
+  const { bots, loadBots, toggleBot, isBotEnabled, detectBotMentions } = useBots()
 
   // Track bot response state
   const activeBotResponses = ref<Set<string>>(new Set())
@@ -53,7 +54,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
 
     // Increase probability if bot is mentioned
     const lastMessage = recent[recent.length - 1]
-    if (lastMessage && detectBotMention(lastMessage.content)?.name === bot.name) {
+    if (lastMessage && detectBotMentions(lastMessage.content).some(b => b.name === bot.name)) {
       probability = 0.8 // High probability when directly mentioned
     }
 
@@ -70,18 +71,20 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
     return Math.min(probability, 0.9) // Cap at 90%
   }
 
-  // NEW: Check for bot triggers when USER SENDS a message
-  const checkOutgoingMessage = async (content: string, roomName: string) => {
+  // Check for bot triggers when USER SENDS a message.
+  // `text` drives mention detection; `wireContent` is what was actually sent (a JSON
+  // envelope when files are attached) so the server can show bots the attachments.
+  const checkOutgoingMessage = async (text: string, roomName: string, wireContent: string = text) => {
     const participantCount = liveKitRoom.participantCount.value
 
     // Capture context BEFORE the new message is added
     // We'll pass this snapshot to avoid including the triggering message in context
     const contextSnapshot = [...lastMessages.value]
 
-    // Check for bot mentions first (always respond to mentions)
-    const mentionedBot = detectBotMention(content)
-    if (mentionedBot && isBotEnabled(mentionedBot.name)) {
-      await triggerBotResponse(mentionedBot, content, roomName, true, contextSnapshot)
+    // Check for bot mentions first (always respond to mentions); every mentioned bot answers
+    const mentionedBots = detectBotMentions(text)
+    if (mentionedBots.length > 0) {
+      await triggerBotResponse(mentionedBots, wireContent, roomName, true, contextSnapshot)
       return
     }
 
@@ -90,7 +93,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
       const enabledBots = bots.value.filter(bot => isBotEnabled(bot.name))
       if (enabledBots.length > 0) {
         const randomBot = enabledBots[Math.floor(Math.random() * enabledBots.length)]
-        await triggerBotResponse(randomBot as BotConfig, content, roomName, false, contextSnapshot)
+        await triggerBotResponse([randomBot as BotConfig], wireContent, roomName, false, contextSnapshot)
         return
       }
     }
@@ -101,23 +104,23 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
 
       const probability = calculateInterjectionProbability(bot as BotConfig, participantCount, contextSnapshot)
       if (Math.random() < probability) {
-        await triggerBotResponse(bot as BotConfig, content, roomName, false, contextSnapshot)
+        await triggerBotResponse([bot as BotConfig], wireContent, roomName, false, contextSnapshot)
         break // Only one bot responds
       }
     }
   }
 
-  // Call bot API with user's context
+  // Call bot API with user's context. Multiple bots reply in order on the server.
   const triggerBotResponse = async (
-    bot: BotConfig,
+    respondingBots: BotConfig[],
     userMessage: string,
     roomName: string,
     isMention: boolean,
     contextMessages?: LiveKitChatMessage[]
   ) => {
     try {
-      // Mark bot as actively responding
-      activeBotResponses.value.add(bot.name)
+      // Mark bots as actively responding
+      respondingBots.forEach(bot => activeBotResponses.value.add(bot.name))
 
       // Use the provided context snapshot if available
       // Otherwise, use current history but exclude the very last message if it matches what we're responding to
@@ -131,32 +134,35 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
         }
       }
 
-      const context = messagesForContext.slice(-10).map(msg => ({
+      const context: BotContextMessage[] = messagesForContext.slice(-10).map(msg => ({
         role: msg.type === 'bot' ? 'model' : 'user',
         userName: msg.userName,
         content: msg.content
       }))
 
       // Note: Current message is NOT added here - server handles it to avoid duplication
+      const body: BotChatRequest = {
+        roomName,
+        userName,
+        content: userMessage,
+        context,
+        botNames: respondingBots.map(bot => bot.name),
+        isInterjection: !isMention,
+        activeBots: bots.value.filter(bot => isBotEnabled(bot.name)).map(bot => bot.name),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
 
-      await $fetch('/api/chat', {
+      await $fetch<BotChatResponse>('/api/chat', {
         method: 'POST',
         headers: liveKitRoom.livekitToken.value ? { Authorization: `Bearer ${liveKitRoom.livekitToken.value}` } : {},
-        body: {
-          roomName,
-          userName,
-          content: userMessage,
-          context,
-          botName: bot.name,
-          isInterjection: !isMention
-        }
+        body
       })
     } catch (error) {
       console.error(`[LiveKit Bots] Failed to trigger bot response:`, error)
     } finally {
       // Clear active response after delay
       const timeoutId = setTimeout(() => {
-        activeBotResponses.value.delete(bot.name)
+        respondingBots.forEach(bot => activeBotResponses.value.delete(bot.name))
         timeoutIds.value.delete(timeoutId)
       }, 5000) // 5 second cooldown
       timeoutIds.value.add(timeoutId)
@@ -211,9 +217,9 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
     // Bot controls
     toggleBot,
     isBotEnabled,
-    detectBotMention,
+    detectBotMentions,
 
-    // NEW: Export for ChatInput
+    // Export for ChatInput
     checkOutgoingMessage,
 
     // Lifecycle

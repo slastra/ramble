@@ -14,7 +14,7 @@ interface FileUpload {
 // Inject LiveKit instances
 const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
 const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
-const liveKitBots = inject('liveKitBots') as { checkOutgoingMessage?: (content: string, roomName: string) => Promise<void> }
+const liveKitBots = inject('liveKitBots') as { checkOutgoingMessage?: (text: string, roomName: string, wireContent?: string) => Promise<void> }
 
 // Compute connection status directly from LiveKit room
 const connectionStatus = computed(() => {
@@ -74,19 +74,16 @@ const sendMessageWithAttachments = async (message: string, attachments?: FileUpl
     attachments: attachments || []
   }
 
+  // Messages with attachments go out as a JSON string; simple messages as plain text
+  const wireContent = attachments && attachments.length > 0 ? JSON.stringify(messageData) : message
+
   // Check if this message should trigger a bot BEFORE sending
   const botPromise = liveKitBots?.checkOutgoingMessage
-    ? liveKitBots.checkOutgoingMessage(message, liveKitRoom.roomName)
+    ? liveKitBots.checkOutgoingMessage(message, liveKitRoom.roomName, wireContent)
     : Promise.resolve()
 
-  // Send the message with attachments through LiveKit data channel
-  if (attachments && attachments.length > 0) {
-    // Send as JSON string for messages with attachments
-    await sendMessage(JSON.stringify(messageData))
-  } else {
-    // Send as plain text for simple messages
-    await sendMessage(message)
-  }
+  // Send the message through LiveKit data channel
+  await sendMessage(wireContent)
 
   // Wait for bot check to complete
   await botPromise

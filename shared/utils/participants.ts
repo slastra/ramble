@@ -1,6 +1,6 @@
-// Reserved participant identities that are NOT real chat users. Kept here so the
-// producers (the /ingress viewer, the server WHIP ingress) and the consumers
-// (chat user list, bot interjection math) stay in sync.
+// Reserved participant identities that are NOT real chat users. Kept here (shared by
+// client and server) so the producers (the /ingress viewer, the server WHIP ingress)
+// and the consumers (chat user list, bot interjection math, bot room roster) stay in sync.
 
 /** Fixed identity of the OBS/WHIP ingress stream (server: whip-ingress.post.ts). */
 export const OBS_STREAM_IDENTITY = 'obs-stream'

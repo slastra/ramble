@@ -27,6 +27,15 @@ const visibleMessages = computed(() =>
   messages.value.filter((m: ChatMessage) => m.type !== 'bot' || m.content.trim().length > 0)
 )
 
+// "Skippy is typing..." line under the messages (people and bots)
+const typingLabel = computed(() => {
+  const names = liveKitChat.typingUsers.value
+  if (names.length === 0) return ''
+  if (names.length === 1) return `${names[0]} is typing...`
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`
+  return 'Several people are typing...'
+})
+
 // Simple scroll to bottom function
 const scrollToBottom = () => {
   if (!messagesContainer.value) return
@@ -107,6 +116,14 @@ onUnmounted(() => {
             :message="message"
           />
         </TransitionGroup>
+
+        <div
+          v-if="typingLabel"
+          class="flex items-center gap-2 pt-3 px-1 text-xs text-dimmed"
+        >
+          <UIcon name="i-lucide-ellipsis" class="animate-pulse" />
+          {{ typingLabel }}
+        </div>
       </div>
     </div>
   </div>
