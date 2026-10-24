@@ -1,7 +1,12 @@
 # Nixpacks configuration for Coolify deployment
 
 [phases.setup]
-nixPkgs = ["nodejs_22", "pnpm"]
+nixPkgs = ["nodejs_22", "pnpm_10"]
+# nixpacks' default nixpkgs snapshot ships Node 22.19, which bundles a Brotli
+# decoder vulnerable to CVE-2026-111497. Pin the nixos-26.05 channel (cached
+# on cache.nixos.org, so Node isn't built from source): Node 22.23.4. Plain
+# `pnpm` there is pnpm 11, so name pnpm_10 for the v9 lockfile.
+nixpkgsArchive = "da6dc0e7b26060f2f71ce3ef7088fb56ee44fa36"
 
 [phases.install]
 cmds = ["pnpm install --frozen-lockfile"]
