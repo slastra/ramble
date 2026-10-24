@@ -269,7 +269,7 @@ onMounted(() => {
       grid = GridStack.init({
         cellHeight: 180,
         minRow: 1,
-        float: true,
+        mode: 'float',
         margin: 12,
         column: 12,
         acceptWidgets: true

@@ -14,27 +14,28 @@
     "clean:build": "rm -rf .nuxt .output"
   },
   "dependencies": {
-    "@dicebear/collection": "^9.4.2",
-    "@dicebear/core": "^9.4.2",
-    "@iconify-json/lucide": "^1.2.114",
-    "@nuxt/content": "^3.14.0",
-    "@nuxt/fonts": "^0.14.0",
-    "@nuxt/ui": "4.9.0",
-    "@nuxtjs/mdc": "^0.22.0",
-    "@vueuse/nuxt": "14.3.0",
-    "gridstack": "^12.6.0",
-    "livekit-client": "^2.20.0",
-    "livekit-server-sdk": "^2.15.5",
-    "nuxt": "^4.4.8",
-    "vue": "^3.5.39"
+    "@dicebear/collection": "^9.4.3",
+    "@dicebear/core": "^9.4.3",
+    "@iconify-json/lucide": "^1.2.147",
+    "@nuxt/content": "^3.16.2",
+    "@nuxt/fonts": "^1.1.0",
+    "@nuxt/ui": "4.12.0",
+    "@nuxtjs/mdc": "^0.23.2",
+    "@vueuse/nuxt": "14.4.0",
+    "better-sqlite3": "^13.0.3",
+    "gridstack": "^14.0.0",
+    "livekit-client": "^2.23.0",
+    "livekit-server-sdk": "^2.19.2",
+    "nuxt": "^4.6.2",
+    "vue": "^3.5.44"
   },
   "devDependencies": {
-    "@nuxt/eslint": "^1.16.0",
-    "@types/node": "^26.0.1",
-    "eslint": "^10.5.0",
+    "@nuxt/eslint": "^1.17.0",
+    "@types/node": "^25.9.9",
+    "eslint": "^10.13.0",
     "nuxt-file-storage": "^0.3.3",
     "typescript": "^6.0.3",
-    "vue-tsc": "^3.3.5"
+    "vue-tsc": "3.3.11"
   },
   "resolutions": {
     "unimport": "4.1.1"

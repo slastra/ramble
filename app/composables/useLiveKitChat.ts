@@ -76,7 +76,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
   })
 
   // Message encoding/decoding
-  function encodeMessage(message: LiveKitChatMessage): Uint8Array {
+  function encodeMessage(message: LiveKitChatMessage): Uint8Array<ArrayBuffer> {
     const jsonString = JSON.stringify(message)
     return new TextEncoder().encode(jsonString)
   }
