@@ -54,7 +54,9 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
 
   // Bots answer one at a time so each later bot sees the earlier replies.
   for (const bot of bots) {
-    sendBotTyping(roomName, bot.name, true).catch(() => {})
+    // Not awaited so the model call starts right away, but the reply waits on it below:
+    // otherwise the two LiveKit API calls race and "typing" can land after the reply.
+    const typingStarted = sendBotTyping(roomName, bot.name, true).catch(() => {})
     try {
       const response = await generateBotResponse({
         bot,
@@ -67,6 +69,7 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
         }
       })
       const reply = stripBotNamePrefix(response, bot.name)
+      await typingStarted
       await sendBotMessage(roomName, bot.name, reply)
 
       history.push({
@@ -81,7 +84,8 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
     } catch (error) {
       console.error(`[chat.post] Failed to deliver ${bot.name}'s response:`, error)
     } finally {
-      sendBotTyping(roomName, bot.name, false).catch(() => {})
+      await typingStarted
+      await sendBotTyping(roomName, bot.name, false).catch(() => {})
     }
   }
 

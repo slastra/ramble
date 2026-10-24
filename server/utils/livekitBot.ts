@@ -35,7 +35,8 @@ export async function sendBotMessage(
 }
 
 // Show "<bot> is typing" in clients while a reply is being generated. Same packet
-// shape as the client-side typing indicator in useLiveKitChat.
+// shape as the client-side typing indicator in useLiveKitChat. Sent reliable (unlike
+// people's typing) so start/stop stay ordered with the bot's reply message.
 export async function sendBotTyping(roomName: string, botName: string, isTyping: boolean) {
   const packet = {
     type: 'typing',
@@ -46,5 +47,5 @@ export async function sendBotTyping(roomName: string, botName: string, isTyping:
     timestamp: Date.now()
   }
 
-  await getRoomServiceClient().sendData(roomName, encoder.encode(JSON.stringify(packet)), DataPacket_Kind.LOSSY, {})
+  await getRoomServiceClient().sendData(roomName, encoder.encode(JSON.stringify(packet)), DataPacket_Kind.RELIABLE, {})
 }
