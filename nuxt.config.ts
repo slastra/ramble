@@ -30,8 +30,8 @@ export default defineNuxtConfig({
   // Runtime config for environment variables
   runtimeConfig: {
     // Private keys that are only available server-side
-    awsRegion: process.env.AWS_REGION || 'us-east-1',
-    bedrockModel: process.env.BEDROCK_MODEL || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
+    openrouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4.1-flash-1017',
     livekitKey: process.env.LIVEKIT_KEY || '',
     livekitSecret: process.env.LIVEKIT_SECRET || '',
     myUsername: process.env.MY_USERNAME || '',

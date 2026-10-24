@@ -1,4 +1,4 @@
-import { generateBotResponse } from '../utils/claude'
+import { generateBotResponse } from '../utils/openrouter'
 import { loadBots } from '../utils/bots'
 import { sendBotMessage } from '../utils/livekitBot'
 import type { ChatMessage } from '../types/chat'

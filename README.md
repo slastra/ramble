@@ -17,7 +17,7 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **WHIP Ingress**: Stream from OBS Studio directly to LiveKit rooms via WHIP protocol
 
 ### AI Integration
-- **Multiple AI Bots**: Configurable bots powered by Claude Haiku 4.5 via AWS Bedrock
+- **Multiple AI Bots**: Configurable bots powered by DeepSeek V4.1 Flash via OpenRouter
 - **Natural Language Triggers**: Activate bots via @mentions
 - **Context-Aware Responses**: Bots use conversation history for relevant responses
 - **Bot Management**: Enable/disable bots through UI with persistent state
@@ -48,7 +48,7 @@ See `package.json` for exact versions.
 - **UI Library**: Nuxt UI v4
 - **Typography**: Nuxt Fonts (Google Fonts) — Inter for UI, Geist Mono for code, Cherry Bomb One for branding
 - **Avatars**: DiceBear (identicon style)
-- **AI Provider**: Claude (Anthropic) via AWS Bedrock — Haiku 4.5 by default
+- **AI Provider**: OpenRouter — DeepSeek V4.1 Flash by default, any OpenRouter model per bot
 - **Real-time**: LiveKit data channels for messaging
 - **File Storage**: nuxt-file-storage with date-based directory structure
 - **Video Layout**: GridStack for draggable video tiles
@@ -61,7 +61,7 @@ See `package.json` for exact versions.
 - Node.js 22+
 - pnpm
 - LiveKit Server (for WebRTC functionality)
-- AWS account with Bedrock access (for AI bots) — credentials picked up from the standard chain (`~/.aws/credentials`, env vars, IAM role). Haiku 4.5 requires the `us.` cross-region inference profile (already the default).
+- OpenRouter API key (for AI bots) — https://openrouter.ai/keys
 - LiveKit Ingress (optional, for OBS streaming via WHIP)
 
 ### Installation
@@ -74,9 +74,8 @@ pnpm install
 2. Configure environment:
 ```bash
 # .env
-AWS_REGION=us-east-1                                         # AWS region for Bedrock
-BEDROCK_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0    # Bedrock model/inference profile
-# AWS credentials are picked up from the standard chain (~/.aws/credentials, env vars, IAM role)
+OPENROUTER_API_KEY=sk-or-...                                 # OpenRouter API key
+OPENROUTER_MODEL=deepseek/deepseek-v4.1-flash-1017          # Default bot model (OpenRouter id)
 LIVEKIT_KEY=devkey                       # LiveKit API key (use 'devkey' for dev mode)
 LIVEKIT_SECRET=secret                    # LiveKit API secret (use 'secret' for dev mode)
 LIVEKIT_URL=ws://localhost:7880          # LiveKit server URL (dev mode)
@@ -155,15 +154,16 @@ name: "Assistant"
 role: "Helpful Assistant"
 triggers: [assistant, help]
 shyness: 0.5            # 0 = always interjects, 1 = never interjects
-temperature:            # 0-1 range (Anthropic API)
+temperature:            # 0-1 range
   normal: 0.7           # Used when @mentioned or trigger word matches
   interjection: 0.85    # Used for random interjections
 personality:
   normal: "You are a helpful assistant..."
   interjection: "..."
-# Optional: pin to a specific Bedrock model/inference profile for this bot.
-# Defaults to BEDROCK_MODEL env var.
-# model: "us.anthropic.claude-sonnet-4-6-20250929-v1:0"
+# Optional: pin this bot to a specific OpenRouter model id.
+# Defaults to OPENROUTER_MODEL env var. Must accept `temperature` and allow
+# reasoning to be disabled (e.g. not z-ai/glm-5.3-flash or minimax/minimax-m3.1-flash).
+# model: "anthropic/claude-haiku-4.5"
 ```
 
 ## Commands
@@ -186,7 +186,7 @@ pnpm run lint        # ESLint with auto-fix
 
 ### Bots
 - `GET /api/bots` — List bot configurations from `content/bots/*.yaml`
-- `POST /api/chat` — Generate a bot reply via Claude/Bedrock and post it to the room. Body: `{roomName, userName, content, botName, isInterjection, context}`. Bot enable/disable is fully client-side (localStorage).
+- `POST /api/chat` — Generate a bot reply via OpenRouter and post it to the room. Body: `{roomName, userName, content, botName, isInterjection, context}`. Bot enable/disable is fully client-side (localStorage).
 - `POST /api/broadcast-message` — Server-initiated room broadcast
 
 ### Files
@@ -261,11 +261,16 @@ The application uses DiceBear to generate unique identicon-style avatars:
   - `chat.ts` - Chat message interfaces and conversion utilities
   - `ingress.ts` - WHIP ingress request/response interfaces
   - `index.ts` - Re-exports
-- `/server/types/` - Server-only type definitions (`chat.ts`)
+- `/server/types/` - Server-only type definitions (`chat.ts`, `openrouter.ts`)
 - `/server/constants/` - Shared constants like file type definitions
 - `/server/utils/` - Server utilities including LiveKit client singleton
 
 ### Recent Updates
+
+**October 2026 — OpenRouter:**
+- **AI provider**: bots moved from Claude on AWS Bedrock to OpenRouter. Default model is `deepseek/deepseek-v4.1-flash-1017`, picked from a persona bake-off: fastest replies, about 6x cheaper than Haiku 4.5, and it honors per-bot temperature. Set `OPENROUTER_API_KEY`; AWS credentials are no longer used.
+- **No SDK**: the server calls OpenRouter's chat completions endpoint with `$fetch`; the `@anthropic-ai/*` packages and the Bedrock IAM script were removed.
+- **Chat participants**: the OBS ingress stream and `/ingress` viewers are hidden from the user list and excluded from bot interjection math.
 
 **April 2026 — AI provider migration:**
 - **Bedrock + Claude**: AI bots now run on Claude Haiku 4.5 via AWS Bedrock (replaces Google Gemini). Credentials via standard AWS chain; no API key in env.

@@ -14,8 +14,6 @@
     "clean:build": "rm -rf .nuxt .output"
   },
   "dependencies": {
-    "@anthropic-ai/bedrock-sdk": "^0.31.0",
-    "@anthropic-ai/sdk": "^0.106.0",
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",
     "@iconify-json/lucide": "^1.2.114",
