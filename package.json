@@ -14,8 +14,8 @@
     "clean:build": "rm -rf .nuxt .output"
   },
   "dependencies": {
-    "@dicebear/collection": "^9.4.3",
-    "@dicebear/core": "^9.4.3",
+    "@dicebear/core": "^10.7.0",
+    "@dicebear/styles": "^10.6.0",
     "@iconify-json/lucide": "^1.2.147",
     "@nuxt/content": "^3.16.2",
     "@nuxt/fonts": "^1.1.0",
@@ -35,7 +35,7 @@
     "eslint": "^10.13.0",
     "nuxt-file-storage": "^0.3.3",
     "typescript": "^6.0.3",
-    "vue-tsc": "3.3.11"
+    "vue-tsc": "3.3.13"
   },
   "resolutions": {
     "unimport": "4.1.1"
