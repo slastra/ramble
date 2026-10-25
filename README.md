@@ -14,7 +14,7 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **Keyboard Shortcuts**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>D</kbd> toggles the microphone, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>E</kbd> the camera (same as Google Meet), even while typing
 - **Adaptive Streaming**: Dynamic video quality based on network conditions
 - **Click-to-Download**: File attachments with original filename preservation
-- **GridStack Video Layout**: Draggable, resizable video tiles with persistent positions
+- **Tiling Video Layout**: Hyprland-style dwindle tiling that always fills the panel. Drag a tile onto another to swap, pin one as main, drag the divider to resize the main split; screen shares take the main slot; your arrangement is remembered per browser
 - **WHIP Ingress**: Any member can stream from OBS Studio into the room via WHIP; `/ingress` is a fullscreen, watch-only view of the stream
 
 ### AI Integration
@@ -56,7 +56,7 @@ See `package.json` for exact versions.
 - **AI Provider**: OpenRouter — DeepSeek V4.1 Flash by default, any OpenRouter model per bot
 - **Real-time**: LiveKit data channels for messaging
 - **File Storage**: nuxt-file-storage with date-based directory structure
-- **Video Layout**: GridStack for draggable video tiles
+- **Video Layout**: Own dwindle tiling (`app/utils/tiling.ts` + `TilingLayout.vue`), no layout library
 - **Notifications**: ntfy.sh integration (push) + optional ramble-daemon (native desktop)
 - **Package Manager**: pnpm (pinned via `packageManager`)
 - **Hosting**: Coolify (nixpacks); LiveKit runs as a separate Docker Compose stack

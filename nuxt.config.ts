@@ -18,7 +18,7 @@ export default defineNuxtConfig({
     enabled: process.env.NODE_ENV === 'development'
   },
 
-  css: ['~/assets/css/main.css', 'gridstack/dist/gridstack.min.css'],
+  css: ['~/assets/css/main.css'],
 
   mdc: {
     highlight: {

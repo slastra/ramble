@@ -53,11 +53,13 @@ const attachTrack = () => {
   }
 }
 
-// Detach track from elements
+// Detach the track from this component's element only. A bare detach() would also
+// strip it from every other element showing it (a tile behind the fullscreen view).
 const detachTrack = () => {
+  const element = videoRef.value ?? audioRef.value
   if (currentTrack.value) {
     try {
-      currentTrack.value.detach()
+      if (element) currentTrack.value.detach(element)
       currentTrack.value = undefined
     } catch (error) {
       console.error('[VideoTrack] Failed to detach track:', error)
@@ -100,8 +102,8 @@ onMounted(() => {
   })
 })
 
-// Clean up on unmount
-onUnmounted(() => {
+// Detach before unmount, while the element ref still exists
+onBeforeUnmount(() => {
   detachTrack()
 })
 
