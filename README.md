@@ -8,13 +8,13 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **WebRTC Communication**: Video, audio, and screen sharing via LiveKit SFU
 - **Real-time Messaging**: Data channel-based instant messaging with typing indicators
 - **File Sharing**: Upload and share images, videos, audio, documents, and archives
-- **DiceBear Avatars**: Unique geometric avatar generation using identicon style
+- **DiceBear Avatars**: An identicon for each person and a robot face for each bot, generated from the name
 - **Name-only Entry**: Join conversations without registration or authentication
 - **Device Management**: Camera, microphone, and speaker selection with live switching
 - **Adaptive Streaming**: Dynamic video quality based on network conditions
 - **Click-to-Download**: File attachments with original filename preservation
 - **GridStack Video Layout**: Draggable, resizable video tiles with persistent positions
-- **WHIP Ingress**: Stream from OBS Studio directly to LiveKit rooms via WHIP protocol
+- **WHIP Ingress**: Any member can stream from OBS Studio into the room via WHIP; `/ingress` is a fullscreen, watch-only view of the stream
 
 ### AI Integration
 - **Multiple AI Bots**: Configurable bots powered by DeepSeek V4.1 Flash via OpenRouter
@@ -49,13 +49,14 @@ See `package.json` for exact versions.
 - **WebRTC**: LiveKit Client + Server SDK (SFU architecture)
 - **UI Library**: Nuxt UI v4
 - **Typography**: Nuxt Fonts (Google Fonts) — Inter for UI, Geist Mono for code, Cherry Bomb One for branding
-- **Avatars**: DiceBear (identicon style)
+- **Avatars**: DiceBear 10 (identicon for people, bottts-neutral for bots)
 - **AI Provider**: OpenRouter — DeepSeek V4.1 Flash by default, any OpenRouter model per bot
 - **Real-time**: LiveKit data channels for messaging
 - **File Storage**: nuxt-file-storage with date-based directory structure
 - **Video Layout**: GridStack for draggable video tiles
 - **Notifications**: ntfy.sh integration (push) + optional ramble-daemon (native desktop)
-- **Package Manager**: pnpm
+- **Package Manager**: pnpm (pinned via `packageManager`)
+- **Hosting**: Coolify (nixpacks); LiveKit runs as a separate Docker Compose stack
 
 ## Setup
 
@@ -86,7 +87,12 @@ NTFY_TOPIC=your-ntfy-topic               # ntfy.sh topic for notifications
 NTFY_URL=https://ntfy.sh                  # ntfy server (optional, defaults to https://ntfy.sh)
 MY_USERNAME=your-username                # Your username to filter self-notifications
 FILE_STORAGE_MOUNT=./uploads             # File storage directory (optional, defaults to ./uploads)
+EVENTS_TOKEN=long-random-string          # ramble-daemon's key to /api/events (stream is off when unset)
+NUXT_PUBLIC_DAEMON_URL=http://localhost:9001   # Local ramble-daemon (optional)
+NUXT_PUBLIC_DAEMON_ENABLED=true
 ```
+
+`.env.example` has the full list.
 
 ### Development
 
@@ -109,10 +115,10 @@ Application available at `http://localhost:3000`
 
 ### Production
 
-Build and deploy:
+ramble.lastra.us runs on Coolify, built with nixpacks (`nixpacks.toml` pins Node 22 and pnpm 10). Pushing to `main` deploys. To build and run it locally:
 ```bash
 pnpm run build
-pnpm run preview
+node .output/server/index.mjs
 ```
 
 ## LiveKit Configuration
@@ -124,27 +130,16 @@ livekit-server --dev
 # WebSocket: ws://localhost:7880
 ```
 
-### Production Configuration
-```yaml
-# /etc/livekit/config.yaml
-port: 7880
-rtc:
-  tcp_port: 7881
-  port_range_start: 50000
-  port_range_end: 60000
-  use_external_ip: true
-keys:
-  your-api-key: your-api-secret
-webhook:
-  api_key: your-api-key
-```
+### Production
+Production LiveKit is its own Coolify app, built from the private repo `slastra/livekit`: one `docker-compose.yaml` with livekit-server, the WHIP ingress, and Valkey. It is separate from this app so a Ramble deploy never drops calls in progress.
 
-### Reverse Proxy (Caddy)
-```
-livekit.lastra.us {
-    reverse_proxy localhost:7880
-}
-```
+| Address | Serves |
+|---|---|
+| `livekit.lastra.us` | signalling and API; `/whip` goes to the ingress |
+| `turn.lastra.us:443` | TURN over TLS for clients on restrictive networks (Traefik terminates TLS) |
+| 7881/tcp, 50000–60000/udp | WebRTC media |
+
+Ramble's `LIVEKIT_KEY` / `LIVEKIT_SECRET` must match the key pair configured there.
 
 ## Bot Configuration
 
@@ -180,25 +175,40 @@ pnpm run lint        # ESLint with auto-fix
 
 ## API Endpoints
 
+Unless marked *public*, an endpoint needs the caller's LiveKit token as `Authorization: Bearer <token>`. Endpoints that take a room only accept the room the token was issued for.
+
 ### LiveKit & Identity
-- `POST /api/livekit-token` — Generate room access tokens
-- `POST /api/whip-ingress` — Create/retrieve WHIP ingress for OBS streaming
-- `POST /api/validate-username` — Check username availability (recognizes returning users via clientId)
-- `POST /api/cleanup-room` — Force-clean stale rooms
+- `POST /api/livekit-token` — *public*. Issues a 10-minute room token. Refuses the reserved identities `obs-stream` and `ai-*`; `Viewer-*` names (the `/ingress` page) get watch-only tokens
+- `POST /api/validate-username` — *public*. Checks a name is free (returning users are recognized by clientId) and not one the user list hides
+- `POST /api/whip-ingress` — Creates or returns the room's WHIP ingress (URL + stream key) for OBS
+- `POST /api/cleanup-room` — Removes participants that have been disconnected longer than `maxIdleMinutes`
 
 ### Bots
-- `GET /api/bots` — List bot configurations from `content/bots/*.yaml`
-- `POST /api/chat` — Generate bot replies via OpenRouter and post them to the room. Body: `BotChatRequest` in `shared/types/chat.ts` (`{roomName, userName, content, botNames, isInterjection, context, activeBots?, timeZone?}`); `content` may be a JSON attachment envelope. Returns `{success, replies}`. Bot enable/disable is fully client-side (localStorage).
-- `POST /api/broadcast-message` — Server-initiated room broadcast
+- `GET /api/bots` — *public*. Bot configurations from `content/bots/*.yaml`
+- `POST /api/chat` — Generate bot replies via OpenRouter and post them to the room. Body: `BotChatRequest` in `shared/types/chat.ts` (`{roomName, userName, content, botNames, isInterjection, context, activeBots?, timeZone?}`); `content` may be a JSON attachment envelope (max 8,000 characters). Returns `{success, replies}`. Bot enable/disable is fully client-side (localStorage).
 
 ### Files
-- `POST /api/upload` — Upload with MIME validation and size limits
-- `GET /api/download/[...path]` — Download with original filename preserved
+- `POST /api/upload` — Upload with MIME validation and per-type size limits; bodies over 150MB are refused
+- `GET /api/download/[...path]` — *public*. Download with original filename preserved
 
 ### Notifications
-- `POST /api/notify` — Send ntfy.sh push notification
-- `GET /api/ntfy-config` — Returns the public ntfy URL/topic for the client
-- `GET /api/events?username=X` — SSE stream of room messages for the ramble-daemon
+- `POST /api/notify` — Send an ntfy push notification
+- `POST /api/broadcast-message` — Publishes a sent message to the in-memory bus that feeds `/api/events`
+- `GET /api/ntfy-config` — *public*. The ntfy URL/topic shown in Settings
+- `GET /api/events?username=X` — SSE stream of every room's messages for ramble-daemon. Requires `Authorization: Bearer <EVENTS_TOKEN>` instead of a LiveKit token
+
+### Rate limits
+Tokens are free to mint, so `server/utils/guards.ts` applies per-IP limits (in memory, so they reset on restart). Over the limit, requests get `429` with `Retry-After`.
+
+| Endpoint | Limit |
+|---|---|
+| `/api/livekit-token` | 20 / minute |
+| `/api/validate-username` | 30 / minute |
+| `/api/chat` | 20 / minute |
+| `/api/notify` | 30 / minute |
+| `/api/broadcast-message` | 60 / minute |
+| `/api/upload` | 30 / 10 minutes, and 1GB / hour |
+| `/api/whip-ingress`, `/api/cleanup-room` | 10 / minute |
 
 ## File Upload System
 
@@ -229,12 +239,11 @@ uploads/
 
 ## Avatar System
 
-The application uses DiceBear to generate unique identicon-style avatars:
-- **Consistent**: Same username always generates the same avatar
-- **Unique**: Different usernames create distinct geometric patterns
-- **Lightweight**: SVG-based avatars with small file sizes
-- **Accessible**: Proper alt text and semantic markup
-- **Implementation**: `useDiceBearAvatar` composable with identicon style
+DiceBear 10 generates every avatar in the browser from the lowercased name:
+- **People** get an identicon, **bots** a `bottts-neutral` robot face (rounded square rather than a circle)
+- **Consistent**: The same name always produces the same avatar; nothing is stored
+- **Lightweight**: Inline SVG data URIs, no network requests
+- **Implementation**: `useDiceBearAvatar(name, kind)` where `kind` is `'user'` or `'bot'`
 
 ## Architecture
 
@@ -252,7 +261,7 @@ The application uses DiceBear to generate unique identicon-style avatars:
 **User & UX:**
 - **useUser**: Persistent identity (cookie clientId + localStorage username)
 - **useBots**: Loads bot configs and runs client-side mention detection
-- **useDiceBearAvatar**: Identicon-style avatar URL generator
+- **useDiceBearAvatar**: Avatar data URI for a person (identicon) or bot (bottts-neutral)
 - **useSoundManager**: Plays notification sounds
 - **useSoundSettings**: Sound preference persistence (volume + per-event mapping)
 - **useDevicePreferences**: Camera/mic/speaker selection persistence
@@ -263,11 +272,19 @@ The application uses DiceBear to generate unique identicon-style avatars:
   - `chat.ts` - Chat message interfaces and conversion utilities
   - `ingress.ts` - WHIP ingress request/response interfaces
   - `index.ts` - Re-exports
-- `/server/types/` - Server-only type definitions (`chat.ts`, `openrouter.ts`)
+- `/shared/utils/` - Helpers used on both sides (`participants.ts` reserved identities, `messageContent.ts` attachment parsing)
+- `/server/types/` - Server-only type definitions (`openrouter.ts`, `h3.d.ts` event context)
 - `/server/constants/` - Shared constants like file type definitions
-- `/server/utils/` - Server utilities including LiveKit client singleton
+- `/server/utils/` - Server utilities: LiveKit client singleton, OpenRouter, bot context, message bus, `guards.ts` (rate limits, room checks)
 
 ### Recent Updates
+
+**October 2026 — LiveKit on Coolify, hardening:**
+- **LiveKit**: moved from bare systemd services to a Docker Compose stack on Coolify (`slastra/livekit`) and upgraded 1.9.12 → 1.13.10. TURN over TLS on `turn.lastra.us:443` now works; it never had, because Traefik sent 443 to an HTTP route instead of TURN.
+- **Events stream**: `/api/events` requires `EVENTS_TOKEN`; it used to stream every room's messages to anyone with the URL. ramble-daemon sends it as `token` in its config.
+- **Identities**: nobody can join as `obs-stream` or `ai-*`; `/ingress` viewers get watch-only tokens.
+- **Abuse limits**: per-IP rate limits, room-bound requests, capped `/api/chat` input, and a 150MB upload body limit.
+- **Dependencies**: DiceBear 10 (every avatar changed once); lockfile fixes for advisories in h3, ws, socket.io-parser, defu, tiptap, tar and others; pnpm 10.34.8.
 
 **October 2026 — OpenRouter:**
 - **AI provider**: bots moved from Claude on AWS Bedrock to OpenRouter. Default model is `deepseek/deepseek-v4.1-flash-1017`, picked from a persona bake-off: fastest replies, about 6x cheaper than Haiku 4.5, and it honors per-bot temperature. Set `OPENROUTER_API_KEY`; AWS credentials are no longer used.
