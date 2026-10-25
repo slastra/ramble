@@ -76,26 +76,17 @@ const isLoadingNtfy = ref(false)
 const ingressInfo = ref<IngressInfo | null>(null)
 const isLoadingIngress = ref(false)
 const ingressError = ref<string | null>(null)
-const showOBSInstructions = ref(false)
+const showStreamKey = ref(false)
 const toast = useToast()
 
-// Apply stored device preferences on mount
+const tabs = [
+  { label: 'Devices', icon: 'i-lucide-headphones', slot: 'devices' as const },
+  { label: 'Sounds', icon: 'i-lucide-bell', slot: 'sounds' as const },
+  { label: 'Notifications', icon: 'i-lucide-smartphone', slot: 'notifications' as const },
+  { label: 'Streaming', icon: 'i-lucide-radio', slot: 'streaming' as const }
+]
+
 onMounted(async () => {
-  // Apply device preferences if they exist and devices are available
-  await nextTick()
-
-  if (devicePrefs.camera.value && cameras.value.some(c => c.deviceId === devicePrefs.camera.value)) {
-    emit('deviceChange', 'videoInput', devicePrefs.camera.value)
-  }
-
-  if (devicePrefs.microphone.value && microphones.value.some(m => m.deviceId === devicePrefs.microphone.value)) {
-    emit('deviceChange', 'audioInput', devicePrefs.microphone.value)
-  }
-
-  if (devicePrefs.speaker.value && speakers.value.some(s => s.deviceId === devicePrefs.speaker.value) && props.supportsSpeakerSelection) {
-    emit('deviceChange', 'audioOutput', devicePrefs.speaker.value)
-  }
-
   // Load Ntfy configuration
   isLoadingNtfy.value = true
   try {
@@ -156,182 +147,186 @@ const copyToClipboard = async (text: string, label: string) => {
 </script>
 
 <template>
-  <div class="space-y-6 w-full">
-    <!-- Device Settings Section -->
-    <div class="space-y-4">
-      <h3 class="text-lg font-semibold">
-        Devices
-      </h3>
+  <UTabs
+    :items="tabs"
+    variant="link"
+    size="sm"
+    class="w-full"
+    :ui="{ content: 'pt-5' }"
+  >
+    <template #devices>
+      <div class="space-y-4">
+        <UFormField v-if="cameras.length > 0" label="Camera">
+          <USelect
+            v-model="internalSelectedCamera"
+            :items="cameras.map(cam => ({ value: cam.deviceId, label: cam.label || `Camera ${cam.deviceId.slice(0, 8)}` }))"
+            value-key="value"
+            placeholder="Select camera"
+            icon="i-lucide-video"
+            class="w-full"
+          />
+        </UFormField>
 
-      <!-- Camera Selection -->
-      <UFormField v-if="cameras.length > 0" label="Camera" class="w-full">
-        <USelect
-          v-model="internalSelectedCamera"
-          :items="cameras.map(cam => ({ value: cam.deviceId, label: cam.label || `Camera ${cam.deviceId.slice(0, 8)}` }))"
-          value-key="value"
-          placeholder="Select camera"
-          class="w-full"
+        <UFormField v-if="microphones.length > 0" label="Microphone">
+          <USelect
+            v-model="internalSelectedMicrophone"
+            :items="microphones.map(mic => ({ value: mic.deviceId, label: mic.label || `Microphone ${mic.deviceId.slice(0, 8)}` }))"
+            value-key="value"
+            placeholder="Select microphone"
+            icon="i-lucide-mic"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField v-if="speakers.length > 0 && supportsSpeakerSelection" label="Speaker">
+          <USelect
+            v-model="internalSelectedSpeaker"
+            :items="speakers.map(speaker => ({ value: speaker.deviceId, label: speaker.label || `Speaker ${speaker.deviceId.slice(0, 8)}` }))"
+            value-key="value"
+            placeholder="Select speaker"
+            icon="i-lucide-volume-2"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UEmpty
+          v-if="cameras.length === 0 && microphones.length === 0"
+          variant="naked"
+          size="sm"
+          icon="i-lucide-plug-zap"
+          title="No devices yet"
+          description="Turn on your camera or microphone once so the browser lists your devices."
         />
-      </UFormField>
 
-      <!-- Microphone Selection -->
-      <UFormField v-if="microphones.length > 0" label="Microphone" class="w-full">
-        <USelect
-          v-model="internalSelectedMicrophone"
-          :items="microphones.map(mic => ({ value: mic.deviceId, label: mic.label || `Microphone ${mic.deviceId.slice(0, 8)}` }))"
-          value-key="value"
-          placeholder="Select microphone"
-          class="w-full"
-        />
-      </UFormField>
-
-      <!-- Speaker Selection -->
-      <UFormField v-if="speakers.length > 0 && supportsSpeakerSelection" label="Speaker" class="w-full">
-        <USelect
-          v-model="internalSelectedSpeaker"
-          :items="speakers.map(speaker => ({ value: speaker.deviceId, label: speaker.label || `Speaker ${speaker.deviceId.slice(0, 8)}` }))"
-          value-key="value"
-          placeholder="Select speaker"
-          class="w-full"
-        />
-      </UFormField>
-    </div>
-
-    <USeparator />
-
-    <!-- Ntfy Notifications Section -->
-    <div class="space-y-4">
-      <h3 class="text-lg font-semibold">
-        Notifications (Ntfy)
-      </h3>
-
-      <!-- Loading State -->
-      <div v-if="isLoadingNtfy" class="flex items-center gap-2 text-muted">
-        <UIcon name="i-lucide-loader-2" class="animate-spin" />
-        <span>Loading notification settings...</span>
+        <p class="text-xs text-dimmed">
+          Your choices are remembered on this browser.
+        </p>
       </div>
+    </template>
 
-      <!-- Ntfy Config -->
-      <div v-else-if="ntfyConfig" class="space-y-4">
+    <template #sounds>
+      <SoundSettings />
+    </template>
+
+    <template #notifications>
+      <div class="space-y-4">
         <p class="text-sm text-muted">
-          Subscribe to receive notifications when users join the chat.
+          Get a push notification on your phone when someone joins or posts.
         </p>
 
-        <!-- Subscription URL -->
-        <UFormField label="Subscription URL" class="w-full">
-          <div class="flex gap-2">
+        <div v-if="isLoadingNtfy" class="flex items-center gap-2 text-sm text-muted">
+          <UIcon name="i-lucide-loader-circle" class="animate-spin" />
+          Loading…
+        </div>
+
+        <template v-else-if="ntfyConfig">
+          <UFormField label="Subscription URL" help="Open it in the ntfy app, or subscribe to it in your browser.">
             <UInput
               :model-value="ntfyConfig.subscriptionUrl"
               readonly
-              class="flex-1 font-mono text-sm"
-            />
-            <UButton
-              icon="i-lucide-copy"
-              color="neutral"
-              variant="ghost"
-              @click="copyToClipboard(ntfyConfig.subscriptionUrl, 'Subscription URL')"
-            />
-          </div>
-        </UFormField>
-
-        <p class="text-xs text-muted">
-          You can subscribe using the Ntfy app or by visiting the URL above.
-        </p>
+              class="w-full"
+              :ui="{ base: 'font-mono text-xs', trailing: 'pe-1' }"
+            >
+              <template #trailing>
+                <UTooltip text="Copy">
+                  <UButton
+                    icon="i-lucide-copy"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    aria-label="Copy subscription URL"
+                    @click="copyToClipboard(ntfyConfig.subscriptionUrl, 'Subscription URL')"
+                  />
+                </UTooltip>
+              </template>
+            </UInput>
+          </UFormField>
+        </template>
       </div>
-    </div>
+    </template>
 
-    <USeparator />
-
-    <!-- OBS Streaming Section -->
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="text-lg font-semibold">
-          OBS Streaming (WHIP)
-        </h3>
-        <UButton
-          v-if="ingressInfo"
-          variant="ghost"
-          color="neutral"
-          :icon="showOBSInstructions ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-          @click="showOBSInstructions = !showOBSInstructions"
-        >
-          {{ showOBSInstructions ? 'Hide' : 'Show' }} Instructions
-        </UButton>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="isLoadingIngress" class="flex items-center gap-2 text-muted">
-        <UIcon name="i-lucide-loader-2" class="animate-spin" />
-        <span>Loading ingress configuration...</span>
-      </div>
-
-      <!-- Error State -->
-      <UAlert
-        v-else-if="ingressError"
-        color="error"
-        variant="subtle"
-        :title="ingressError"
-        icon="i-lucide-alert-circle"
-      />
-
-      <!-- Ingress Info -->
-      <div v-else-if="ingressInfo" class="space-y-4">
+    <template #streaming>
+      <div class="space-y-4">
         <p class="text-sm text-muted">
-          Use these credentials to stream from OBS to the chat room.
+          Anyone in the room can stream from OBS Studio. The stream shows up in the video grid and on <ULink to="/ingress" class="text-primary">/ingress</ULink>.
         </p>
 
-        <!-- Server URL -->
-        <UFormField label="Server URL" class="w-full">
-          <div class="flex gap-2">
+        <div v-if="isLoadingIngress" class="flex items-center gap-2 text-sm text-muted">
+          <UIcon name="i-lucide-loader-circle" class="animate-spin" />
+          Getting your stream details…
+        </div>
+
+        <UAlert
+          v-else-if="ingressError"
+          color="error"
+          variant="subtle"
+          :title="ingressError"
+          icon="i-lucide-circle-alert"
+        />
+
+        <template v-else-if="ingressInfo">
+          <UFormField label="Server">
             <UInput
               :model-value="ingressInfo.url"
               readonly
-              class="flex-1 font-mono text-sm"
-            />
-            <UButton
-              icon="i-lucide-copy"
-              color="neutral"
-              variant="ghost"
-              @click="copyToClipboard(ingressInfo.url, 'Server URL')"
-            />
-          </div>
-        </UFormField>
+              class="w-full"
+              :ui="{ base: 'font-mono text-xs', trailing: 'pe-1' }"
+            >
+              <template #trailing>
+                <UTooltip text="Copy">
+                  <UButton
+                    icon="i-lucide-copy"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    aria-label="Copy server URL"
+                    @click="copyToClipboard(ingressInfo.url, 'Server URL')"
+                  />
+                </UTooltip>
+              </template>
+            </UInput>
+          </UFormField>
 
-        <!-- Stream Key -->
-        <UFormField label="Stream Key" class="w-full">
-          <div class="flex gap-2">
+          <UFormField label="Bearer token (stream key)">
             <UInput
               :model-value="ingressInfo.streamKey"
-              type="password"
+              :type="showStreamKey ? 'text' : 'password'"
               readonly
-              class="flex-1 font-mono text-sm"
-            />
-            <UButton
-              icon="i-lucide-copy"
-              color="neutral"
-              variant="ghost"
-              @click="copyToClipboard(ingressInfo.streamKey, 'Stream Key')"
-            />
-          </div>
-        </UFormField>
+              class="w-full"
+              :ui="{ base: 'font-mono text-xs', trailing: 'pe-1' }"
+            >
+              <template #trailing>
+                <UTooltip :text="showStreamKey ? 'Hide' : 'Show'">
+                  <UButton
+                    :icon="showStreamKey ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    :aria-label="showStreamKey ? 'Hide stream key' : 'Show stream key'"
+                    @click="showStreamKey = !showStreamKey"
+                  />
+                </UTooltip>
+                <UTooltip text="Copy">
+                  <UButton
+                    icon="i-lucide-copy"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    aria-label="Copy stream key"
+                    @click="copyToClipboard(ingressInfo.streamKey, 'Stream key')"
+                  />
+                </UTooltip>
+              </template>
+            </UInput>
+          </UFormField>
 
-        <!-- OBS Setup Instructions -->
-        <UCard v-if="showOBSInstructions" :ui="{ body: 'p-4' }">
-          <div class="space-y-3 text-sm">
-            <h4 class="font-semibold">
-              OBS Studio Setup
-            </h4>
-            <ol class="list-decimal list-inside space-y-2 text-muted">
-              <li>Open OBS Studio</li>
-              <li>Go to <strong>Settings → Stream</strong></li>
-              <li>Select <strong>"WHIP"</strong> as the Service (requires OBS 30+)</li>
-              <li>Paste the <strong>Server URL</strong> into the "Server" field</li>
-              <li>Paste the <strong>Stream Key</strong> into the "Bearer Token" field</li>
-              <li>Click <strong>OK</strong> and start streaming</li>
-            </ol>
-          </div>
-        </UCard>
+          <ol class="text-sm text-muted space-y-1.5 list-decimal list-inside marker:text-dimmed">
+            <li>In OBS (30 or newer), open <strong class="text-default">Settings → Stream</strong></li>
+            <li>Set <strong class="text-default">Service</strong> to <strong class="text-default">WHIP</strong></li>
+            <li>Paste the server and the bearer token above, then start streaming</li>
+          </ol>
+        </template>
       </div>
-    </div>
-  </div>
+    </template>
+  </UTabs>
 </template>

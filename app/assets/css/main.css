@@ -5,6 +5,19 @@
   --font-sans: "Inter", sans-serif;
   --font-serif: "Inter", sans-serif;
   --font-mono: "Geist Mono", monospace;
+
+  /* Ramble's primary: a warm coral that reads on the stone neutrals in both modes */
+  --color-coral-50: oklch(97.4% 0.014 39);
+  --color-coral-100: oklch(94.2% 0.034 39);
+  --color-coral-200: oklch(88.5% 0.068 38);
+  --color-coral-300: oklch(80.6% 0.118 37);
+  --color-coral-400: oklch(72.4% 0.165 36);
+  --color-coral-500: oklch(66.2% 0.192 35);
+  --color-coral-600: oklch(59.1% 0.196 33);
+  --color-coral-700: oklch(50.4% 0.172 32);
+  --color-coral-800: oklch(42.6% 0.140 32);
+  --color-coral-900: oklch(37.2% 0.112 33);
+  --color-coral-950: oklch(25.4% 0.080 32);
 }
 
 :root {

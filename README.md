@@ -10,7 +10,8 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **File Sharing**: Upload and share images, videos, audio, documents, and archives
 - **DiceBear Avatars**: An identicon for each person and a robot face for each bot, generated from the name
 - **Name-only Entry**: Join conversations without registration or authentication
-- **Device Management**: Camera, microphone, and speaker selection with live switching
+- **Device Management**: Split mic/camera buttons with device menus right in the toolbar; choices are remembered and applied when you join
+- **Keyboard Shortcuts**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>D</kbd> toggles the microphone, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>E</kbd> the camera (same as Google Meet), even while typing
 - **Adaptive Streaming**: Dynamic video quality based on network conditions
 - **Click-to-Download**: File attachments with original filename preservation
 - **GridStack Video Layout**: Draggable, resizable video tiles with persistent positions
@@ -29,13 +30,15 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **Audio Level Monitoring**: Real-time audio level visualization
 - **Sound Notifications**: Customizable sound effects for chat events (messages, joins, leaves, AI responses)
 - **Push Notifications**: ntfy.sh integration for message notifications when away
-- **Connection Status**: Real-time connection state indicators
+- **Connection Status**: A dot on the logo (hover for details, including desktop-notification status)
+- **Who's Here**: Avatar stack in the chat header and an empty-room view that names who's around and offers one-click camera/screen share
 - **Responsive Design**: Mobile-friendly interface with Nuxt UI v4 components
 - **File Upload Modal**: Drag-and-drop or button-based file selection with progress tracking
 - **Rich Media Display**: Inline preview for images, video, and audio files
 - **Fullscreen Video**: Immersive fullscreen viewer with overlayed controls for video streams
 - **Video Quality Stats**: Real-time statistics overlay showing resolution, framerate, and bitrate
-- **Scroll to Bottom**: Auto-appearing button when scrolling up, smart auto-scroll behavior
+- **Grouped Messages**: Runs from the same sender share one avatar and header (Nuxt UI `UChatMessage`)
+- **Jump to Latest**: Reading older messages keeps your place; new ones are counted on a "3 new" button instead of yanking the view
 - **Modern Typography**: Inter font family for clean, legible UI text; Geist Mono for code
 - **Persistent Identity**: Cookie-based reconnection within 30-second timeout, auto-filled username
 - **Device Preferences**: Remember camera, microphone, and speaker selections across sessions

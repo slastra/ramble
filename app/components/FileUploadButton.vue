@@ -131,6 +131,7 @@ const closeModal = () => {
       icon="i-lucide-paperclip"
       variant="ghost"
       color="neutral"
+      aria-label="Attach files"
     />
 
     <template #content>
@@ -145,6 +146,7 @@ const closeModal = () => {
               variant="ghost"
               color="neutral"
               size="sm"
+              aria-label="Close"
               :disabled="isUploading"
               @click="closeModal"
             />

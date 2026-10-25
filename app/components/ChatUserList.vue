@@ -5,115 +5,82 @@ import type { UseLiveKitChatReturn } from '../composables/useLiveKitChat'
 const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
 const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
 const { bots, toggleBot, isBotEnabled } = useBots()
+const { members } = useRoomMembers(liveKitRoom)
 
-// Generate avatars for users and bots
-const getAvatar = (name: string, kind: 'user' | 'bot' = 'user') => {
-  const avatarUrl = useDiceBearAvatar(name, kind)
-  return { src: avatarUrl.value }
-}
+const avatar = (name: string, kind: 'user' | 'bot' = 'user') => ({
+  src: useDiceBearAvatar(name, kind).value,
+  alt: name
+})
 
 const isTyping = (name: string) => liveKitChat?.typingUsers.value?.includes(name) || false
-
-const sortedUsers = computed(() => {
-  const users = []
-
-  // Add local participant
-  if (liveKitRoom?.localParticipant.value) {
-    users.push(liveKitRoom.localParticipant.value)
-  }
-
-  // Add remote participants
-  if (liveKitRoom?.remoteParticipants.value) {
-    users.push(...liveKitRoom.remoteParticipants.value)
-  }
-
-  return users
-    .filter(user => !isHiddenFromChat(user.identity)) // Hide bots, OBS stream, and view-only participants
-    .map(user => ({
-      userId: user.identity,
-      userName: user.name || user.identity,
-      mediaState: {
-        webcam: user.isCameraEnabled,
-        microphone: user.isMicrophoneEnabled,
-        screen: user.isScreenShareEnabled
-      },
-      isTyping: isTyping(user.name || user.identity)
-    }))
-    .sort((a, b) => a.userName.localeCompare(b.userName))
-})
 </script>
 
 <template>
-  <div class="h-full w-full ">
-    <div class="space-y-2 w-full">
-      <div
-        v-for="user in sortedUsers"
-        :key="user.userId"
-      >
-        <div class="flex items-center justify-between">
+  <div class="space-y-4">
+    <section>
+      <h3 class="text-xs font-medium text-muted uppercase tracking-wide mb-2">
+        In the room · {{ members.length }}
+      </h3>
+      <ul class="space-y-2.5">
+        <li
+          v-for="member in members"
+          :key="member.identity"
+          class="flex items-center justify-between gap-2"
+        >
           <UUser
-            :name="user.userName"
-            :description="
-              user.isTyping
-                ? 'typing...'
-                : user.userId === liveKitRoom?.localParticipant.value?.identity
-                  ? 'You'
-                  : 'Active now'
-            "
-            :avatar="getAvatar(user.userName)"
+            :name="member.isLocal ? `${member.name} (you)` : member.name"
+            :description="isTyping(member.name) ? 'typing…' : undefined"
+            :avatar="avatar(member.name)"
             size="sm"
           />
-
-          <!-- Media Status Indicators -->
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1.5 text-dimmed">
             <UIcon
-              v-if="user.mediaState?.webcam"
-              name="i-lucide-webcam"
-              class="text-muted"
-            />
-            <UIcon
-              v-if="user.mediaState?.microphone"
-              name="i-lucide-mic"
-              class="text-muted"
-            />
-            <UIcon
-              v-if="user.mediaState?.screen"
+              v-if="member.participant.isScreenShareEnabled"
               name="i-lucide-screen-share"
-              class="text-muted"
+              class="size-4 text-primary"
+            />
+            <UIcon
+              v-if="member.participant.isCameraEnabled"
+              name="i-lucide-video"
+              class="size-4 text-primary"
+            />
+            <UIcon
+              :name="member.participant.isMicrophoneEnabled ? 'i-lucide-mic' : 'i-lucide-mic-off'"
+              :class="['size-4', member.participant.isMicrophoneEnabled && 'text-primary']"
             />
           </div>
-        </div>
-      </div>
+        </li>
+      </ul>
+    </section>
 
-      <div
-        v-if="sortedUsers.length === 0"
-        class="text-center py-8 text-sm text-neutral-500"
-      >
-        No users online
-      </div>
-      <USeparator class="my-4" />
-      <!-- Bot Management Section -->
-      <div v-if="bots.length > 0" class="">
-        <div class="space-y-4">
-          <div
-            v-for="bot in bots"
-            :key="bot.name"
-            class="flex items-center justify-between"
-          >
-            <UUser
-              :name="bot.name"
-              :description="isTyping(bot.name) ? 'typing...' : bot.role"
-              :avatar="getAvatar(bot.name, 'bot')"
-              size="sm"
-            />
-            <USwitch
-              :model-value="isBotEnabled(bot.name)"
-              size="sm"
-              @update:model-value="toggleBot(bot.name)"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <section v-if="bots.length > 0">
+      <USeparator class="mb-3" />
+      <h3 class="text-xs font-medium text-muted uppercase tracking-wide mb-2">
+        Bots
+      </h3>
+      <ul class="space-y-2.5">
+        <li
+          v-for="bot in bots"
+          :key="bot.name"
+          class="flex items-center justify-between gap-2"
+        >
+          <UUser
+            :name="bot.name"
+            :description="isTyping(bot.name) ? 'typing…' : bot.role"
+            :avatar="{ ...avatar(bot.name, 'bot'), class: 'rounded-md' }"
+            size="sm"
+          />
+          <USwitch
+            :model-value="isBotEnabled(bot.name)"
+            size="sm"
+            :aria-label="`${isBotEnabled(bot.name) ? 'Disable' : 'Enable'} ${bot.name}`"
+            @update:model-value="toggleBot(bot.name)"
+          />
+        </li>
+      </ul>
+      <p class="text-xs text-dimmed mt-3">
+        Enabled bots answer when you mention them and sometimes chime in. Only your browser's setting.
+      </p>
+    </section>
   </div>
 </template>

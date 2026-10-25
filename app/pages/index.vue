@@ -8,6 +8,9 @@ const state = reactive({
   name: userName.value || '' // Pre-fill with stored username
 })
 
+// Returning visitors (stored name) get a greeting instead of the pitch
+const returningName = userName.value || ''
+
 async function validateAndJoin() {
   if (!state.name.trim()) return
   if (loading.value) return
@@ -54,68 +57,73 @@ function useSuggestion(suggestion: string) {
 <template>
   <UDashboardPanel id="home" :ui="{ body: 'p-0 sm:p-0' }">
     <template #body>
-      <UContainer class="flex-1 flex flex-col justify-center items-center py-8">
-        <UCard class="w-full max-w-xs" variant="subtle">
-          <template #header>
-            <h1 class="text-2xl font-bold text-center logo">
+      <div class="relative flex-1 flex flex-col items-center justify-center px-4 py-12 overflow-hidden">
+        <!-- A soft coral glow behind the form -->
+        <div
+          aria-hidden="true"
+          class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[36rem] rounded-full bg-primary/15 blur-3xl"
+        />
+
+        <div class="relative w-full max-w-sm space-y-8">
+          <div class="text-center space-y-2">
+            <h1 class="logo text-6xl text-highlighted">
               Ramble
             </h1>
-          </template>
+            <p class="text-muted">
+              <template v-if="returningName">
+                Welcome back, {{ returningName }}.
+              </template>
+              <template v-else>
+                Drop in, talk it out, bring your bots.
+              </template>
+            </p>
+          </div>
 
-          <form class="space-y-4" @submit.prevent="validateAndJoin">
-            <UFormField
-              label="Your Name"
-              :error="error || undefined"
-            >
+          <form class="space-y-3" @submit.prevent="validateAndJoin">
+            <UFormField :error="error || undefined">
               <UInput
                 v-model="state.name"
-                placeholder="Enter your name"
-                size="lg"
+                placeholder="What should we call you?"
+                aria-label="Your Name"
+                icon="i-lucide-user-round"
+                size="xl"
                 autofocus
+                autocomplete="nickname"
                 :disabled="loading"
                 class="w-full"
                 @input="error = ''"
-                @keydown.enter="validateAndJoin"
               />
             </UFormField>
 
-            <!-- Show username suggestions -->
-            <div v-if="suggestions.length > 0" class="space-y-2">
-              <p class="text-sm text-muted">
-                Try one of these available names:
-              </p>
-              <div class="flex flex-wrap gap-2">
-                <UButton
-                  v-for="suggestion in suggestions"
-                  :key="suggestion"
-                  size="xs"
-                  variant="subtle"
-                  @click="useSuggestion(suggestion)"
-                >
-                  {{ suggestion }}
-                </UButton>
-              </div>
+            <div v-if="suggestions.length > 0" class="flex flex-wrap items-center gap-2">
+              <span class="text-sm text-muted">Try</span>
+              <UButton
+                v-for="suggestion in suggestions"
+                :key="suggestion"
+                :label="suggestion"
+                size="xs"
+                color="neutral"
+                variant="subtle"
+                @click="useSuggestion(suggestion)"
+              />
             </div>
 
             <UButton
               type="submit"
-              color="primary"
-              size="lg"
+              label="Join Chat"
+              trailing-icon="i-lucide-arrow-right"
+              size="xl"
               block
               :loading="loading"
               :disabled="!state.name.trim()"
-            >
-              Join Chat
-            </UButton>
+            />
           </form>
 
-          <template #footer>
-            <p class="text-sm text-neutral text-center">
-              Enter your name
-            </p>
-          </template>
-        </UCard>
-      </UContainer>
+          <p class="text-center text-xs text-dimmed">
+            No account needed. Your name is remembered on this browser.
+          </p>
+        </div>
+      </div>
     </template>
   </UDashboardPanel>
 </template>

@@ -6,151 +6,166 @@ import { convertToLegacyFormat } from '../../shared/types/chat'
 
 const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
 const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
+const { clientId } = useUser()
 
-// Convert LiveKit messages to legacy ChatMessage format
+// A run of messages from one sender within this window shares one avatar and header
+const GROUP_WINDOW_MS = 5 * 60 * 1000
+// How close to the bottom still counts as "at the bottom" for auto-scroll
+const BOTTOM_THRESHOLD_PX = 80
+
 const messages = computed(() =>
   liveKitChat.messages.value.map(convertToLegacyFormat)
 )
 
-// Compute connection status from LiveKit room state
-const connectionStatus = computed(() => {
-  if (liveKitRoom.isConnected.value) return 'connected'
-  if (liveKitRoom.isConnecting.value) return 'connecting'
-  return 'disconnected'
-})
-
-const messagesContainer = ref<HTMLElement>()
-const messagesContent = ref<HTMLElement>()
-
-// Filter out empty bot messages (during initial streaming)
+// Hide bot messages that are still empty while a reply streams in
 const visibleMessages = computed(() =>
   messages.value.filter((m: ChatMessage) => m.type !== 'bot' || m.content.trim().length > 0)
 )
 
-// "Skippy is typing..." line under the messages (people and bots)
+const rows = computed(() => visibleMessages.value.map((message, i) => {
+  const previous = visibleMessages.value[i - 1]
+  const groupStart = !previous
+    || previous.type === 'system'
+    || previous.userId !== message.userId
+    || message.timestamp - previous.timestamp > GROUP_WINDOW_MS
+  return { message, groupStart }
+}))
+
+const isConnecting = computed(() => !liveKitRoom.isConnected.value && liveKitRoom.isConnecting.value)
+
+const { bots } = useBots()
+const emptyHint = computed(() => {
+  const names = bots.value.map(bot => bot.name)
+  if (names.length === 0) return 'Say hi.'
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} or ${names.at(-1)}`
+  return `Say hi, or mention ${list} to wake a bot up.`
+})
+
+// "Skippy is typing" under the messages (people and bots)
 const typingLabel = computed(() => {
   const names = liveKitChat.typingUsers.value
   if (names.length === 0) return ''
-  if (names.length === 1) return `${names[0]} is typing...`
-  if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`
-  return 'Several people are typing...'
+  if (names.length === 1) return `${names[0]} is typing`
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing`
+  return 'Several people are typing'
 })
 
-// Simple scroll to bottom function
-const scrollToBottom = () => {
-  if (!messagesContainer.value) return
-  requestAnimationFrame(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
+// Follow new messages only while the reader is at the bottom; otherwise count them
+// on the jump button instead of yanking the view away from what they're reading
+const viewport = ref<HTMLElement>()
+const content = ref<HTMLElement>()
+const isAtBottom = ref(true)
+const unreadCount = ref(0)
+
+function measure() {
+  const el = viewport.value
+  if (!el) return
+  isAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX
+  if (isAtBottom.value) unreadCount.value = 0
 }
 
-// Set up ResizeObserver to watch for content size changes
-let resizeObserver: ResizeObserver | null = null
+function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
+  const el = viewport.value
+  if (!el) return
+  el.scrollTo({ top: el.scrollHeight, behavior })
+  unreadCount.value = 0
+}
 
-// Watch for new messages and trigger scroll
-watch(visibleMessages, () => {
-  nextTick(() => scrollToBottom())
-}, { deep: true })
-
-onMounted(() => {
-  nextTick(() => {
-    // Initial scroll
+watch(() => visibleMessages.value.length, async (count, previousCount = 0) => {
+  const added = visibleMessages.value.slice(previousCount)
+  const sentByMe = added.some(m => m.userId === clientId.value)
+  await nextTick()
+  if (isAtBottom.value || sentByMe) {
     scrollToBottom()
-
-    // Set up ResizeObserver to automatically scroll when content resizes
-    if (messagesContent.value) {
-      if (resizeObserver) resizeObserver.disconnect()
-      resizeObserver = new ResizeObserver(() => {
-        scrollToBottom()
-      })
-
-      resizeObserver.observe(messagesContent.value)
-    }
-  })
-})
-
-onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
+  } else {
+    unreadCount.value += added.filter(m => m.type !== 'system').length
   }
 })
+
+// Images and late-rendering markdown change the height after a message arrives
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  scrollToBottom('instant')
+  resizeObserver = new ResizeObserver(() => {
+    if (isAtBottom.value) scrollToBottom('instant')
+  })
+  if (content.value) resizeObserver.observe(content.value)
+})
+onUnmounted(() => resizeObserver?.disconnect())
 </script>
 
 <template>
   <div class="flex-1 flex flex-col min-h-0 relative">
-    <!-- Empty state -->
     <div
-      v-if="visibleMessages.length === 0 && connectionStatus !== 'connecting'"
-      class="flex flex-col items-center justify-center flex-1 text-muted py-12"
+      ref="viewport"
+      class="flex-1 flex flex-col overflow-y-auto px-3 py-4"
+      @scroll.passive="measure"
     >
-      <UIcon name="i-lucide-message-circle-dashed" class="text-4xl mb-2" />
-      <p>Nothin' yet!</p>
-    </div>
+      <UEmpty
+        v-if="visibleMessages.length === 0"
+        variant="naked"
+        :loading="isConnecting"
+        :icon="isConnecting ? undefined : 'i-lucide-message-circle-dashed'"
+        :title="isConnecting ? 'Connecting…' : 'Nothin\' yet!'"
+        :description="isConnecting ? undefined : emptyHint"
+        class="flex-1"
+      />
 
-    <!-- Loading state -->
-    <div
-      v-else-if="visibleMessages.length === 0 && connectionStatus === 'connecting'"
-      class="flex flex-col items-center justify-center flex-1 text-muted"
-    >
-      <UIcon name="i-lucide-loader-2" class="text-4xl mb-2 animate-spin" />
-      <p>Connecting to chat...</p>
-    </div>
+      <div ref="content" :class="visibleMessages.length === 0 ? 'hidden' : 'mt-auto'">
+        <ChatMessageItem
+          v-for="row in rows"
+          :key="row.message.id"
+          :message="row.message"
+          :group-start="row.groupStart"
+          class="message-in"
+        />
 
-    <!-- Messages container -->
-    <div
-      v-else
-      ref="messagesContainer"
-      class="flex-1 overflow-y-auto p-4 scroll-smooth"
-    >
-      <div ref="messagesContent">
-        <TransitionGroup
-          name="message"
-          tag="div"
-          class="space-y-4"
-        >
-          <ChatMessageItem
-            v-for="message in visibleMessages"
-            :key="message.id"
-            :message="message"
-          />
-        </TransitionGroup>
-
-        <div
-          v-if="typingLabel"
-          class="flex items-center gap-2 pt-3 px-1 text-xs text-dimmed"
-        >
-          <UIcon name="i-lucide-ellipsis" class="animate-pulse" />
-          {{ typingLabel }}
+        <div class="h-6 flex items-center gap-2 pl-10 pt-1">
+          <template v-if="typingLabel">
+            <UIcon name="i-lucide-ellipsis" class="size-4 text-dimmed animate-pulse" />
+            <UChatShimmer :text="typingLabel" class="text-xs" />
+          </template>
         </div>
       </div>
     </div>
+
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-active-class="transition duration-150 ease-in"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <UButton
+        v-if="!isAtBottom && visibleMessages.length > 0"
+        :label="unreadCount > 0 ? `${unreadCount} new` : undefined"
+        :aria-label="unreadCount > 0 ? `${unreadCount} new messages, jump to latest` : 'Jump to latest'"
+        icon="i-lucide-arrow-down"
+        color="neutral"
+        variant="outline"
+        size="sm"
+        class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full shadow-lg bg-default"
+        @click="scrollToBottom()"
+      />
+    </Transition>
   </div>
 </template>
 
 <style scoped>
-/* Message fade-in animation */
-.message-enter-active {
-  transition: all 0.3s ease-out;
+/* New messages rise in; existing ones don't animate on first render of the list */
+.message-in {
+  animation: message-in 220ms ease-out both;
 }
 
-.message-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
-.message-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.message-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-
-/* Smooth animation for messages being pushed down */
-.message-move {
-  transition: transform 0.3s ease;
+@media (prefers-reduced-motion: reduce) {
+  .message-in {
+    animation: none;
+  }
 }
 </style>

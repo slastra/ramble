@@ -111,7 +111,7 @@ const downloadFile = async (attachment: FileAttachment) => {
           <img
             :src="`/api/download/${attachment.url}?name=${encodeURIComponent(attachment.originalName)}`"
             :alt="attachment.originalName"
-            class="max-w-sm max-h-64 rounded cursor-pointer object-cover transition-transform hover:scale-101"
+            class="w-full max-w-sm max-h-64 rounded-lg cursor-pointer object-cover transition-transform hover:scale-101"
             loading="lazy"
             @click="downloadFile(attachment)"
           >
@@ -138,7 +138,7 @@ const downloadFile = async (attachment: FileAttachment) => {
             controls
             preload="metadata"
             :src="`/api/download/${attachment.url}`"
-            class="max-w-lg max-h-64 rounded"
+            class="w-full max-w-lg max-h-64 rounded-lg"
           >
             <source :src="`/api/download/${attachment.url}`" :type="attachment.mimeType">
             Your browser does not support the video tag.

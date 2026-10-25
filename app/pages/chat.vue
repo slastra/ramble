@@ -44,22 +44,18 @@ const allParticipants = computed(() => {
   return participants
 })
 
-// Computed property for human user count (excluding bots) to match ChatUserList
-const humanUserCount = computed(() => {
-  const users = []
+// People in the room as the chat shows them (no bots, stream, or viewers)
+const { members } = useRoomMembers(liveKitRoom)
+const memberAvatars = computed(() => members.value.map(member => ({
+  src: useDiceBearAvatar(member.name).value,
+  alt: member.name
+})))
 
-  // Add local participant
-  if (liveKitRoom?.localParticipant.value) {
-    users.push(liveKitRoom.localParticipant.value)
-  }
+const { enabled: soundsEnabled } = useSoundSettings()
 
-  // Add remote participants
-  if (liveKitRoom?.remoteParticipants.value) {
-    users.push(...liveKitRoom.remoteParticipants.value)
-  }
-
-  // Exclude bots, the OBS stream, and view-only participants (same logic as ChatUserList)
-  return users.filter(user => !isHiddenFromChat(user.identity)).length
+const connectionLabel = computed(() => {
+  if (!liveKitRoom.isConnected.value) return liveKitRoom.isConnecting.value ? 'Reconnecting…' : 'Disconnected'
+  return isDaemonConnected.value ? 'Connected · desktop notifications on' : 'Connected'
 })
 
 // Track if chat sidebar is open
@@ -96,8 +92,15 @@ const handleParticipantDisconnected = (participant: unknown) => {
   playSound('userLeft')
 }
 
+const devicePrefs = useDevicePreferences()
+
 const handleConnected = () => {
   isReady.value = true
+  if (devicePrefs.microphone.value) handleDeviceChange('audioInput', devicePrefs.microphone.value)
+  if (devicePrefs.camera.value) handleDeviceChange('videoInput', devicePrefs.camera.value)
+  if (devicePrefs.speaker.value && liveKitRoom.supportsSpeakerSelection.value) {
+    handleDeviceChange('audioOutput', devicePrefs.speaker.value)
+  }
 }
 
 const handleDisconnected = () => {
@@ -119,29 +122,9 @@ onUnmounted(async () => {
   await liveKitRoom.disconnect()
 })
 
-// Handle media control events
-const handleWebcamToggle = async () => {
-  try {
-    await liveKitRoom.enableCamera(!liveKitRoom.isCameraEnabled.value)
-  } catch (error) {
-    console.error('[Chat] Failed to toggle camera:', error)
-  }
-}
-
-const handleMicToggle = async () => {
-  try {
-    await liveKitRoom.enableMicrophone(!liveKitRoom.isMicrophoneEnabled.value)
-  } catch (error) {
-    console.error('[Chat] Failed to toggle microphone:', error)
-  }
-}
-
-const handleScreenToggle = async () => {
-  try {
-    await liveKitRoom.enableScreenShare(!liveKitRoom.isScreenShareEnabled.value)
-  } catch (error) {
-    console.error('[Chat] Failed to toggle screen share:', error)
-  }
+async function leave() {
+  await liveKitRoom.disconnect()
+  await navigateTo('/')
 }
 
 const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutput', deviceId: string) => {
@@ -177,54 +160,59 @@ const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutp
       >
         <template #header>
           <div class="flex items-center justify-between w-full gap-2">
-            <div class="flex items-center gap-2">
-              <h3 class="font-semibold">
+            <div class="flex items-center gap-3 min-w-0">
+              <h2 class="font-semibold text-highlighted">
                 Chat
-              </h3>
-              <UBadge
-                :label="String(humanUserCount)"
-                color="success"
-                variant="subtle"
-              />
-            </div>
-            <div class="flex items-center gap-3">
-              <!-- Sound Settings Popover -->
-              <UPopover>
+              </h2>
+
+              <!-- Who's here; opens the member and bot list -->
+              <UPopover :content="{ align: 'start' }">
                 <UButton
                   color="neutral"
                   variant="ghost"
-                  icon="i-lucide-volume-2"
-                />
+                  size="sm"
+                  class="px-1.5 gap-2"
+                  :aria-label="`${members.length} in the room, show people and bots`"
+                >
+                  <UAvatarGroup size="2xs" :max="4">
+                    <UAvatar
+                      v-for="avatar in memberAvatars"
+                      :key="avatar.alt"
+                      :src="avatar.src"
+                      :alt="avatar.alt"
+                    />
+                  </UAvatarGroup>
+                  <span class="text-xs text-muted tabular-nums">{{ members.length }}</span>
+                </UButton>
 
                 <template #content>
-                  <div class="p-4 w-96">
-                    <SoundSettings />
-                  </div>
-                </template>
-              </UPopover>
-
-              <!-- User List Popover -->
-              <UPopover>
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  icon="i-lucide-users"
-                />
-
-                <template #content>
-                  <div class="p-4 w-80  overflow-y-auto">
+                  <div class="p-3 w-72 max-h-[70vh] overflow-y-auto">
                     <ChatUserList />
                   </div>
                 </template>
               </UPopover>
+            </div>
 
-              <UButton
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-log-out"
-
-                @click="async () => { await liveKitRoom.disconnect(); navigateTo('/') }"
-              />
+            <div class="flex items-center gap-1">
+              <UTooltip :text="soundsEnabled ? 'Mute sounds' : 'Unmute sounds'">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  :icon="soundsEnabled ? 'i-lucide-bell' : 'i-lucide-bell-off'"
+                  :aria-pressed="!soundsEnabled"
+                  aria-label="Sounds"
+                  @click="soundsEnabled = !soundsEnabled"
+                />
+              </UTooltip>
+              <UTooltip text="Leave the room">
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-log-out"
+                  aria-label="Leave the room"
+                  @click="leave"
+                />
+              </UTooltip>
             </div>
           </div>
         </template>
@@ -240,48 +228,29 @@ const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutp
         <template #header>
           <UDashboardNavbar>
             <template #left>
-              <div class="flex items-center gap-2">
+              <UTooltip :text="connectionLabel">
                 <UChip
-                  :show="liveKitRoom.isConnected.value"
-                  :color="liveKitRoom.isConnected.value && isDaemonConnected ? 'success' : liveKitRoom.isConnected.value ? 'warning' : 'error'"
-                  size="2xs"
+                  :color="liveKitRoom.isConnected.value ? 'success' : liveKitRoom.isConnecting.value ? 'warning' : 'error'"
+                  size="sm"
+                  position="top-right"
                   inset
                 >
-                  <div class="text-2xl font-semibold logo">
-                    Ramble
-                  </div>
+                  <span class="text-2xl font-semibold logo">Ramble</span>
                 </UChip>
-              </div>
+              </UTooltip>
             </template>
             <template #right>
-              <div class="flex items-center gap-3">
-                <!-- Streaming Controls -->
-                <UButton
-                  :color="liveKitRoom.isMicrophoneEnabled.value ? 'primary' : 'neutral'"
-                  variant="ghost"
-                  icon="i-lucide-mic"
-                  @click="handleMicToggle"
-                />
-                <UButton
-                  :color="liveKitRoom.isCameraEnabled.value ? 'primary' : 'neutral'"
-                  variant="ghost"
-                  icon="i-lucide-video"
-                  @click="handleWebcamToggle"
-                />
-                <UButton
-                  :color="liveKitRoom.isScreenShareEnabled.value ? 'primary' : 'neutral'"
-                  variant="ghost"
-                  icon="i-lucide-screen-share"
-                  @click="handleScreenToggle"
-                />
-
-                <!-- Settings Button -->
-                <UButton
-                  color="neutral"
-                  variant="ghost"
-                  icon="i-lucide-settings"
-                  @click="isSettingsOpen = true"
-                />
+              <div class="flex items-center gap-2">
+                <MediaControls />
+                <UTooltip text="Settings">
+                  <UButton
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-settings"
+                    aria-label="Settings"
+                    @click="isSettingsOpen = true"
+                  />
+                </UTooltip>
               </div>
             </template>
           </UDashboardNavbar>
@@ -322,10 +291,12 @@ const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutp
       </div>
     </div>
 
-    <div v-else class="flex items-center justify-center h-screen">
-      <UCard>
-        <p>Just a moment...</p>
-      </UCard>
+    <div v-else class="flex items-center justify-center h-dvh">
+      <UEmpty
+        variant="naked"
+        loading
+        title="Joining the room…"
+      />
     </div>
 
     <!-- Settings Modal -->

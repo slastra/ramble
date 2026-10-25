@@ -6,11 +6,11 @@ const { playSound, canPlayAudio, enableAudio } = useSoundManager()
 
 // Sound event labels for better UX
 const soundEventLabels: Record<SoundEvent, string> = {
-  messageReceived: 'Message Received',
-  messageSent: 'Message Sent',
-  aiResponse: 'AI Response',
-  userJoined: 'User Joined',
-  userLeft: 'User Left',
+  messageReceived: 'Message received',
+  messageSent: 'Message sent',
+  aiResponse: 'Bot reply',
+  userJoined: 'Someone joined',
+  userLeft: 'Someone left',
   error: 'Error',
   notification: 'Notification'
 }
@@ -30,95 +30,69 @@ const handleVolumeChange = (newVolume: number) => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Enable/Disable Toggle -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h3 class="font-medium">
-          Sound Notifications
-        </h3>
-        <p class="text-sm text-muted">
-          Enable or disable sound effects
-        </p>
-      </div>
-      <UToggle v-model="enabled" />
-    </div>
+  <div class="space-y-5">
+    <USwitch
+      v-model="enabled"
+      label="Sound effects"
+      description="Play a sound for new messages, bot replies, joins and leaves."
+    />
 
-    <!-- Audio Permission Warning -->
     <UAlert
       v-if="enabled && !canPlayAudio"
       icon="i-lucide-volume-x"
       color="warning"
-      title="Audio Permission Required"
-      description="Click here to enable audio notifications"
-      class="cursor-pointer"
-      @click="enableAudio"
+      variant="subtle"
+      title="Your browser is blocking sound"
+      description="Allow it once and Ramble can play sounds for this visit."
+      :actions="[{ label: 'Allow sound', color: 'warning', variant: 'solid', size: 'xs', onClick: () => { enableAudio() } }]"
     />
 
-    <!-- Volume Control -->
-    <div v-if="enabled" class="space-y-2">
-      <div class="flex items-center justify-between">
-        <label class="text-sm font-medium">Volume</label>
-        <span class="text-sm text-muted">{{ Math.round(volume * 100) }}%</span>
-      </div>
-      <USlider
-        v-model="volume"
-        :min="0"
-        :max="1"
-        :step="0.1"
-        class="w-full"
-        @update:model-value="(val) => handleVolumeChange(val as number)"
-      />
-    </div>
+    <template v-if="enabled">
+      <UFormField :label="`Volume · ${Math.round(volume * 100)}%`">
+        <USlider
+          v-model="volume"
+          :min="0"
+          :max="1"
+          :step="0.05"
+          @update:model-value="(val) => handleVolumeChange(val as number)"
+        />
+      </UFormField>
 
-    <!-- Sound Mappings -->
-    <div v-if="enabled" class="space-y-4">
-      <h4 class="font-medium">
-        Sound Effects
-      </h4>
-
-      <div class="space-y-3">
+      <div class="divide-y divide-default">
         <div
           v-for="(event, eventKey) in soundEventLabels"
           :key="eventKey"
-          class="flex items-center justify-between gap-3"
+          class="flex items-center justify-between gap-3 py-2 first:pt-0"
         >
-          <div class="flex-1">
-            <label class="text-sm font-medium">{{ event }}</label>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <!-- Sound Selection -->
+          <span class="text-sm">{{ event }}</span>
+          <UFieldGroup size="sm">
             <USelect
               v-model="soundConfig[eventKey as SoundEvent]"
               :items="availableSounds"
-              class="w-40"
+              class="w-36"
               @update:model-value="(value: string) => setSoundForEvent(eventKey as SoundEvent, value)"
             />
-
-            <!-- Test Button -->
-            <UButton
-              icon="i-lucide-play"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              @click="testSound(eventKey as SoundEvent)"
-            />
-          </div>
+            <UTooltip text="Play">
+              <UButton
+                icon="i-lucide-play"
+                color="neutral"
+                variant="subtle"
+                :aria-label="`Play the ${event} sound`"
+                @click="testSound(eventKey as SoundEvent)"
+              />
+            </UTooltip>
+          </UFieldGroup>
         </div>
       </div>
-    </div>
 
-    <!-- Reset Button -->
-    <div v-if="enabled" class="pt-4 border-t border-default">
       <UButton
-        variant="outline"
+        label="Reset to defaults"
+        icon="i-lucide-rotate-ccw"
+        variant="ghost"
         color="neutral"
         size="sm"
         @click="resetToDefaults"
-      >
-        Reset to Defaults
-      </UButton>
-    </div>
+      />
+    </template>
   </div>
 </template>

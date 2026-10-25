@@ -6,6 +6,29 @@ import { VideoQuality } from 'livekit-client'
 import { GridStack } from 'gridstack'
 
 const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
+const { members } = useRoomMembers(liveKitRoom)
+const toast = useToast()
+
+const emptyTitle = computed(() => members.value.length <= 1 ? 'It\'s just you so far' : 'Nobody\'s on camera')
+const emptyDescription = computed(() => {
+  const others = members.value.filter(member => !member.isLocal).map(member => member.name)
+  if (others.length === 0) return 'Turn on your camera or share your screen, and anyone who joins will see it here.'
+  const names = others.length <= 2 ? others.join(' and ') : `${others.slice(0, 2).join(', ')} and ${others.length - 2} more`
+  return `${names} ${others.length === 1 ? 'is' : 'are'} here. Go live to start the conversation.`
+})
+
+async function goLive(action: () => Promise<void>, what: string) {
+  try {
+    await action()
+  } catch (error) {
+    toast.add({ title: `Couldn't ${what}`, description: error instanceof Error ? error.message : undefined, icon: 'i-lucide-circle-alert', color: 'error' })
+  }
+}
+
+const emptyActions = computed(() => [
+  { label: 'Turn on camera', icon: 'i-lucide-video', onClick: () => goLive(() => liveKitRoom.enableCamera(true), 'turn on the camera') },
+  { label: 'Share screen', icon: 'i-lucide-screen-share', color: 'neutral' as const, variant: 'subtle' as const, onClick: () => goLive(() => liveKitRoom.enableScreenShare(true), 'share your screen') }
+])
 
 // Fullscreen modal state
 const isFullscreenOpen = ref(false)
@@ -350,23 +373,30 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full w-full p-4 bg-default overflow-auto">
-    <!-- Empty state overlay -->
+  <div class="relative h-full w-full p-4 bg-default overflow-auto">
+    <!-- Nobody on camera: show who's here and the quickest way to go live -->
     <div
       v-if="videoParticipants.length === 0"
-      class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+      class="absolute inset-0 flex items-center justify-center z-10 p-6"
     >
-      <UCard>
-        <div class="text-center py-8">
-          <UIcon name="i-lucide-video-off" class="w-12 h-12 mx-auto mb-4 text-muted" />
-          <p class="text-muted">
-            No video streams active
-          </p>
-          <p class="text-sm text-muted mt-2">
-            Enable your camera or screen share to get started
-          </p>
-        </div>
-      </UCard>
+      <UEmpty
+        variant="naked"
+        :title="emptyTitle"
+        :description="emptyDescription"
+        :actions="emptyActions"
+        class="max-w-sm"
+      >
+        <template #leading>
+          <UAvatarGroup size="lg" :max="5" class="mb-2">
+            <UAvatar
+              v-for="member in members"
+              :key="member.identity"
+              :src="useDiceBearAvatar(member.name).value"
+              :alt="member.name"
+            />
+          </UAvatarGroup>
+        </template>
+      </UEmpty>
     </div>
 
     <!-- Grid is always rendered -->
