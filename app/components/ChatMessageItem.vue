@@ -26,7 +26,7 @@ const parsedMessage = computed(() => {
 // UChatMessage expects AI SDK message parts; the content slot below does the rendering
 const parts = computed(() => [{ type: 'text' as const, text: parsedMessage.value.content }])
 
-// DiceBear avatar: identicon for people, robot face for bots
+// DiceBear avatar: initial face for people, robot face for bots
 const avatarUrl = useDiceBearAvatar(props.message.userName, isAIMessage.value ? 'bot' : 'user')
 
 const prose = [

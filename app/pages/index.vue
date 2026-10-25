@@ -81,8 +81,9 @@ const presenceText = computed(() => {
   if (names.length === 0) return 'Nobody\'s here yet. Start things off.'
   if (names.length === 1) return `${names[0]} is here`
   if (names.length === 2) return `${names[0]} and ${names[1]} are here`
+  // Kept short enough to stay on one line beside the avatars
   const others = names.length - 2
-  return `${names[0]}, ${names[1]} and ${others} ${others === 1 ? 'other' : 'others'} are here`
+  return `${names[0]}, ${names[1]} and ${others} ${others === 1 ? 'other' : 'others'}`
 })
 
 async function validateAndJoin() {
@@ -179,7 +180,7 @@ function useSuggestion(suggestion: string) {
               <div
                 v-if="presence"
                 role="status"
-                class="flex items-center gap-2.5 rounded-full bg-elevated/70 py-1 pr-3.5 ring ring-default backdrop-blur-sm"
+                class="flex max-w-full items-center gap-2.5 rounded-full bg-elevated/70 py-1 pr-3.5 ring ring-default backdrop-blur-sm"
                 :class="present.length ? 'pl-1' : 'pl-3.5'"
               >
                 <UAvatarGroup v-if="present.length" size="xs" :max="4">
@@ -194,7 +195,7 @@ function useSuggestion(suggestion: string) {
                   <span v-if="present.length" class="absolute inset-0 rounded-full bg-success motion-safe:animate-ping opacity-60" />
                   <span class="relative size-2 rounded-full" :class="present.length ? 'bg-success' : 'bg-dimmed/60'" />
                 </span>
-                <span class="text-sm text-toned">{{ presenceText }}</span>
+                <span class="min-w-0 truncate text-sm text-toned">{{ presenceText }}</span>
               </div>
             </Transition>
           </div>

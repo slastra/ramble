@@ -8,7 +8,7 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **WebRTC Communication**: Video, audio, and screen sharing via LiveKit SFU
 - **Real-time Messaging**: Data channel-based instant messaging with typing indicators
 - **File Sharing**: Upload and share images, videos, audio, documents, and archives
-- **DiceBear Avatars**: An identicon for each person and a robot face for each bot, generated from the name
+- **DiceBear Avatars**: A face with their initial for each person and a robot face for each bot, generated from the name
 - **Name-only Entry**: Join conversations without registration or authentication
 - **Device Management**: Split mic/camera buttons with device menus right in the toolbar; choices are remembered and applied when you join
 - **Keyboard Shortcuts**: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>D</kbd> toggles the microphone, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>E</kbd> the camera (same as Google Meet), even while typing
@@ -52,7 +52,7 @@ See `package.json` for exact versions.
 - **WebRTC**: LiveKit Client + Server SDK (SFU architecture)
 - **UI Library**: Nuxt UI v4
 - **Typography**: Nuxt Fonts (Google Fonts) — Inter for UI, Geist Mono for code, Cherry Bomb One for branding
-- **Avatars**: DiceBear 10 (identicon for people, bottts-neutral for bots)
+- **Avatars**: DiceBear 10 (initial-face for people, bottts-neutral for bots)
 - **AI Provider**: OpenRouter — DeepSeek V4.1 Flash by default, any OpenRouter model per bot
 - **Real-time**: LiveKit data channels for messaging
 - **File Storage**: nuxt-file-storage with date-based directory structure
@@ -250,7 +250,7 @@ uploads/
 ## Avatar System
 
 DiceBear 10 generates every avatar in the browser from the lowercased name:
-- **People** get an identicon, **bots** a `bottts-neutral` robot face (rounded square rather than a circle)
+- **People** get an `initial-face` (their initial as the mouth), **bots** a `bottts-neutral` robot face (rounded square rather than a circle)
 - **Consistent**: The same name always produces the same avatar; nothing is stored
 - **Lightweight**: Inline SVG data URIs, no network requests
 - **Implementation**: `useDiceBearAvatar(name, kind)` where `kind` is `'user'` or `'bot'`
@@ -271,7 +271,7 @@ DiceBear 10 generates every avatar in the browser from the lowercased name:
 **User & UX:**
 - **useUser**: Persistent identity (cookie clientId + localStorage username)
 - **useBots**: Loads bot configs and runs client-side mention detection
-- **useDiceBearAvatar**: Avatar data URI for a person (identicon) or bot (bottts-neutral)
+- **useDiceBearAvatar**: Avatar data URI for a person (initial-face) or bot (bottts-neutral)
 - **useSoundManager**: Plays notification sounds
 - **useSoundSettings**: Sound preference persistence (volume + per-event mapping)
 - **useDevicePreferences**: Camera/mic/speaker selection persistence
