@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RemoteParticipant } from 'livekit-client'
+import type { ChatMessage } from '../../shared/types/chat'
 
 definePageMeta({
   middleware: 'auth'
@@ -84,11 +85,20 @@ provide(LiveKitBotsKey, liveKitBots)
 
 const { playSound } = useSoundManager()
 const { applySavedDevices } = useMediaControls(liveKitRoom)
+const push = usePushNotifications(liveKitRoom.livekitToken)
 
 // Named handlers for event listener cleanup
 const handleParticipantConnected = (participant: RemoteParticipant) => {
-  liveKitChat.addLocalSystemMessage(`${participant.name || participant.identity} joined the chat`)
+  const name = participant.name || participant.identity
+  liveKitChat.addLocalSystemMessage(`${name} joined the chat`)
   playSound('userJoined')
+  if (!isHiddenFromChat(participant.identity)) push.notifyLocally('joins', 'Ramble', `${name} joined the room`).catch(() => {})
+}
+
+// People's messages (not bots or system notes) notify while this tab is in the background
+const handleMessageReceived = (message: ChatMessage) => {
+  if (message.userId === clientId.value || message.type !== 'message') return
+  push.notifyLocally('messages', message.userName, messagePreview(message.content)).catch(() => {})
 }
 
 const handleParticipantDisconnected = (participant: RemoteParticipant) => {
@@ -99,6 +109,13 @@ const handleParticipantDisconnected = (participant: RemoteParticipant) => {
 const handleConnected = () => {
   isReady.value = true
   applySavedDevices()
+  // Tell this device's subscription who we joined as, and announce the arrival to
+  // anyone who's away and wants joins (the server ignores repeats for a few minutes)
+  push.sync().catch(() => {})
+  $fetch('/api/push/joined', {
+    method: 'POST',
+    headers: liveKitRoom.livekitToken.value ? { Authorization: `Bearer ${liveKitRoom.livekitToken.value}` } : {}
+  }).catch(() => {})
 }
 
 const handleDisconnected = () => {
@@ -114,6 +131,8 @@ const joinFailedActions = [
 ]
 
 onMounted(() => {
+  push.refresh().catch(() => {})
+  liveKitChat.on('messageReceived', handleMessageReceived)
   liveKitRoom.on('participantConnected', handleParticipantConnected)
   liveKitRoom.on('participantDisconnected', handleParticipantDisconnected)
   liveKitRoom.on('connected', handleConnected)
@@ -121,6 +140,7 @@ onMounted(() => {
 })
 
 onUnmounted(async () => {
+  liveKitChat.off('messageReceived', handleMessageReceived)
   liveKitRoom.off('participantConnected', handleParticipantConnected)
   liveKitRoom.off('participantDisconnected', handleParticipantDisconnected)
   liveKitRoom.off('connected', handleConnected)

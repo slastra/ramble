@@ -6,7 +6,6 @@ const PUBLIC_PATHS = [
   '/api/validate-username',
   '/api/room-presence',
   '/api/bots',
-  '/api/ntfy-config',
   '/api/download/',
   '/api/events'
 ]

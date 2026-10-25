@@ -1,4 +1,5 @@
 import { getMessageBus } from '../utils/messageBus'
+import { pushToRoom } from '../utils/push'
 
 interface BroadcastMessageBody {
   author: string
@@ -35,6 +36,18 @@ export default defineEventHandler(async (event) => {
     room: body.room,
     timestamp: body.timestamp || Date.now()
   })
+
+  // People who are away and want messages get a notification; the sender's identity comes
+  // from their token, not the body
+  const sender = event.context.livekitIdentity
+  if (body.type === 'message' && sender) {
+    pushToRoom(body.room, 'messages', sender, {
+      title: sender,
+      body: messagePreview(body.content),
+      tag: 'chat',
+      url: '/'
+    }).catch(error => console.error('[push] Message notification failed:', error))
+  }
 
   return { success: true }
 })

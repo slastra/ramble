@@ -5,12 +5,6 @@ import type { MediaDeviceKind } from '../composables/useMediaControls'
 const liveKitRoom = injectRoomContext(LiveKitRoomKey)
 const { chooseDevice } = useMediaControls(liveKitRoom)
 
-interface NtfyConfig {
-  url: string
-  topic: string
-  subscriptionUrl: string
-}
-
 const cameras = liveKitRoom.cameras
 const microphones = liveKitRoom.microphones
 const speakers = liveKitRoom.speakers
@@ -28,10 +22,6 @@ function deviceModel(kind: MediaDeviceKind, selected: Ref<string | null>) {
 const selectedCamera = deviceModel('videoInput', liveKitRoom.selectedCamera)
 const selectedMicrophone = deviceModel('audioInput', liveKitRoom.selectedMicrophone)
 const selectedSpeaker = deviceModel('audioOutput', liveKitRoom.selectedSpeaker)
-
-// Ntfy configuration
-const ntfyConfig = ref<NtfyConfig | null>(null)
-const isLoadingNtfy = ref(false)
 
 // WHIP Ingress management
 const ingressInfo = ref<IngressInfo | null>(null)
@@ -77,18 +67,9 @@ watch(activeTab, (tab) => {
   if (tab === 'streaming') loadIngress()
 })
 
-onMounted(async () => {
+onMounted(() => {
   // Device labels are blank until the browser grants access; refresh in case it has since
   liveKitRoom.refreshDevices()
-
-  isLoadingNtfy.value = true
-  try {
-    ntfyConfig.value = await $fetch('/api/ntfy-config')
-  } catch (error) {
-    console.error('[Settings] Failed to load ntfy config:', error)
-  } finally {
-    isLoadingNtfy.value = false
-  }
 })
 
 // Copy to clipboard helper
@@ -176,40 +157,7 @@ const copyToClipboard = async (text: string, label: string) => {
     </template>
 
     <template #notifications>
-      <div class="space-y-4">
-        <p class="text-sm text-muted">
-          Get a push notification on your phone when someone joins or posts.
-        </p>
-
-        <div v-if="isLoadingNtfy" class="flex items-center gap-2 text-sm text-muted">
-          <UIcon name="i-lucide-loader-circle" class="animate-spin" />
-          Loading…
-        </div>
-
-        <template v-else-if="ntfyConfig">
-          <UFormField label="Subscription URL" help="Open it in the ntfy app, or subscribe to it in your browser.">
-            <UInput
-              :model-value="ntfyConfig.subscriptionUrl"
-              readonly
-              class="w-full"
-              :ui="{ base: 'font-mono text-xs', trailing: 'pe-1' }"
-            >
-              <template #trailing>
-                <UTooltip text="Copy">
-                  <UButton
-                    icon="i-lucide-copy"
-                    color="neutral"
-                    variant="link"
-                    size="sm"
-                    aria-label="Copy subscription URL"
-                    @click="copyToClipboard(ntfyConfig.subscriptionUrl, 'Subscription URL')"
-                  />
-                </UTooltip>
-              </template>
-            </UInput>
-          </UFormField>
-        </template>
-      </div>
+      <NotificationSettings />
     </template>
 
     <template #streaming>

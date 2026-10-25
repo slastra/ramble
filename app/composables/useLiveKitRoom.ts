@@ -312,20 +312,6 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
     roomInstance.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
       participantTracking.addParticipant(participant.identity)
       eventEmitter.emit('participantConnected', participant)
-
-      // Send notification when user joins
-      const participantName = participant.name || participant.identity
-      $fetch('/api/notify', {
-        method: 'POST',
-        headers: livekitToken.value ? { Authorization: `Bearer ${livekitToken.value}` } : {},
-        body: {
-          userName: participantName,
-          message: 'joined the chat',
-          type: 'join'
-        }
-      }).catch(() => {
-        // Silently ignore notification errors
-      })
     })
 
     roomInstance.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {

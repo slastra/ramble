@@ -29,7 +29,7 @@ Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based
 - **Media Controls**: Intuitive controls for camera, microphone, and screen sharing
 - **Audio Level Monitoring**: Real-time audio level visualization
 - **Sound Notifications**: Customizable sound effects for chat events (messages, joins, leaves, AI responses)
-- **Push Notifications**: ntfy.sh integration for message notifications when away
+- **Browser Notifications**: Web Push for new messages and joins, per device and opt-in (Settings → Notifications). Arrives with Ramble closed; inside the room, only while its tab is in the background. iPhone/iPad need Ramble added to the Home Screen first
 - **Connection Status**: A dot on the logo (hover for details, including desktop-notification status)
 - **Who's Here**: Avatar stack in the chat header and an empty-room view that names who's around and offers one-click camera/screen share
 - **Responsive Design**: Mobile-friendly interface with Nuxt UI v4 components
@@ -57,7 +57,7 @@ See `package.json` for exact versions.
 - **Real-time**: LiveKit data channels for messaging
 - **File Storage**: nuxt-file-storage with date-based directory structure
 - **Video Layout**: Own dwindle tiling (`app/utils/tiling.ts` + `TilingLayout.vue`), no layout library
-- **Notifications**: ntfy.sh integration (push) + optional ramble-daemon (native desktop)
+- **Notifications**: Web Push (`web-push`, VAPID, service worker in `public/sw.js`) + optional ramble-daemon (native desktop)
 - **Package Manager**: pnpm (pinned via `packageManager`)
 - **Hosting**: Coolify (nixpacks); LiveKit runs as a separate Docker Compose stack
 
@@ -86,9 +86,10 @@ LIVEKIT_KEY=devkey                       # LiveKit API key (use 'devkey' for dev
 LIVEKIT_SECRET=secret                    # LiveKit API secret (use 'secret' for dev mode)
 LIVEKIT_URL=ws://localhost:7880          # LiveKit server URL (dev mode)
 NUXT_PUBLIC_SITE_URL=https://lastra.us   # Production URL
-NTFY_TOPIC=your-ntfy-topic               # ntfy.sh topic for notifications
-NTFY_URL=https://ntfy.sh                  # ntfy server (optional, defaults to https://ntfy.sh)
-MY_USERNAME=your-username                # Your username to filter self-notifications
+NUXT_PUBLIC_VAPID_PUBLIC_KEY=...         # Web Push key pair (npx web-push generate-vapid-keys);
+VAPID_PRIVATE_KEY=...                    #   notifications are off when unset
+VAPID_SUBJECT=https://ramble.lastra.us   # Contact for the push services
+DATA_DIR=/app/data                       # Push subscriptions; needs a persistent volume
 FILE_STORAGE_MOUNT=./uploads             # File storage directory (optional, defaults to ./uploads)
 EVENTS_TOKEN=long-random-string          # ramble-daemon's key to /api/events (stream is off when unset)
 NUXT_PUBLIC_DAEMON_URL=http://localhost:9001   # Local ramble-daemon (optional)
@@ -196,9 +197,11 @@ Unless marked *public*, an endpoint needs the caller's LiveKit token as `Authori
 - `GET /api/download/[...path]` — *public*. Download with original filename preserved
 
 ### Notifications
-- `POST /api/notify` — Send an ntfy push notification
-- `POST /api/broadcast-message` — Publishes a sent message to the in-memory bus that feeds `/api/events`
-- `GET /api/ntfy-config` — *public*. The ntfy URL/topic shown in Settings
+- `POST /api/push/subscribe` — Turns notifications on for a device (or refreshes it). The owner is the identity in the caller's LiveKit token; at most 200 devices
+- `POST /api/push/unsubscribe` — Turns them off; the subscription endpoint is the proof of ownership
+- `POST /api/push/test` — Sends that device a sample notification
+- `POST /api/push/joined` — Called by a client once it's connected; pushes "<name> joined" to people who are away (once per person per 5 minutes)
+- `POST /api/broadcast-message` — Publishes a sent message to the in-memory bus that feeds `/api/events`, and pushes it to subscribers who aren't in the room
 - `GET /api/events?username=X` — SSE stream of every room's messages for ramble-daemon. Requires `Authorization: Bearer <EVENTS_TOKEN>` instead of a LiveKit token
 
 ### Rate limits
@@ -210,7 +213,9 @@ Tokens are free to mint, so `server/utils/guards.ts` applies per-IP limits (in m
 | `/api/validate-username` | 30 / minute |
 | `/api/room-presence` | 30 / minute |
 | `/api/chat` | 20 / minute |
-| `/api/notify` | 30 / minute |
+| `/api/push/subscribe`, `/unsubscribe` | 20 / minute |
+| `/api/push/joined` | 5 / minute |
+| `/api/push/test` | 5 / minute |
 | `/api/broadcast-message` | 60 / minute |
 | `/api/upload` | 30 / 10 minutes, and 1GB / hour |
 | `/api/whip-ingress`, `/api/cleanup-room` | 10 / minute |
@@ -271,6 +276,7 @@ DiceBear 10 generates every avatar in the browser from the lowercased name:
 - **useSoundSettings**: Sound preference persistence (volume + per-event mapping)
 - **useDevicePreferences**: Camera/mic/speaker selection persistence
 - **useDaemonSync**: Browser focus/visibility heartbeats to the optional ramble-daemon
+- **usePushNotifications**: Web Push subscribe/unsubscribe, per-device event choices, and notifications for a backgrounded tab
 
 ### Type Organization
 - `/shared/types/` - Types shared between client and server

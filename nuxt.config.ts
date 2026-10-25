@@ -34,9 +34,11 @@ export default defineNuxtConfig({
     openrouterModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4.1-flash-1017',
     livekitKey: process.env.LIVEKIT_KEY || '',
     livekitSecret: process.env.LIVEKIT_SECRET || '',
-    myUsername: process.env.MY_USERNAME || '',
-    ntfyUrl: process.env.NTFY_URL || '',
-    ntfyTopic: process.env.NTFY_TOPIC || '',
+    // Web Push: the VAPID key pair signs pushes; push is off when the keys are unset
+    vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
+    vapidSubject: process.env.VAPID_SUBJECT || 'https://ramble.lastra.us',
+    // Persistent server data (push subscriptions); a volume of its own in production
+    dataDir: process.env.DATA_DIR || './.data/ramble',
     // Shared secret ramble-daemon sends to /api/events; the stream is off when unset
     eventsToken: process.env.EVENTS_TOKEN || '',
     // Public keys that are exposed to the client
@@ -44,7 +46,8 @@ export default defineNuxtConfig({
       livekitUrl: process.env.LIVEKIT_URL || 'ws://localhost:7880',
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
       daemonUrl: process.env.NUXT_PUBLIC_DAEMON_URL || 'http://localhost:9001',
-      daemonEnabled: process.env.NUXT_PUBLIC_DAEMON_ENABLED !== 'false'
+      daemonEnabled: process.env.NUXT_PUBLIC_DAEMON_ENABLED !== 'false',
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY || ''
     }
   },
 
