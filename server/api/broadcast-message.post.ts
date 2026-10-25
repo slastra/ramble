@@ -17,6 +17,8 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Missing required fields: author, content, room'
     })
   }
+  assertTokenRoom(event, body.room)
+  rateLimit(event, 'broadcast', 60, 60_000)
 
   // Determine event type - convert 'bot' to 'message' for daemon
   let eventType: 'message' | 'system' = 'message'

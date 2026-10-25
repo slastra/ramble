@@ -7,8 +7,22 @@ interface UploadedFile {
   content: string
 }
 
+// Files arrive base64-encoded in a JSON body, so the largest allowed file (100MB)
+// is ~134MB on the wire. Refuse anything bigger before reading it into memory.
+const MAX_BODY_BYTES = 150 * 1024 * 1024
+const UPLOAD_BYTES_PER_HOUR = 1024 * 1024 * 1024
+
 export default defineEventHandler(async (event) => {
   try {
+    const contentLength = Number(getHeader(event, 'content-length'))
+    if (!contentLength || contentLength > MAX_BODY_BYTES) {
+      throw createError({
+        statusCode: 413,
+        statusMessage: 'Upload is too large'
+      })
+    }
+    rateLimit(event, 'upload', 30, 10 * 60_000)
+
     const { files } = await readBody<{ files: UploadedFile[] }>(event)
 
     if (!files || files.length === 0) {
@@ -18,11 +32,8 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const uploadedFiles = []
-    const now = new Date()
-    const year = now.getFullYear().toString()
-    const month = (now.getMonth() + 1).toString().padStart(2, '0')
-
+    // Validate every file before storing any, so the byte budget is charged up front
+    const accepted = []
     for (const file of files) {
       if (!file.name || !file.content || !file.type) {
         continue
@@ -49,6 +60,17 @@ export default defineEventHandler(async (event) => {
         })
       }
 
+      accepted.push({ file, size: buffer.length, allowedType })
+    }
+    const totalBytes = accepted.reduce((sum, { size }) => sum + size, 0)
+    rateLimit(event, 'upload-bytes', UPLOAD_BYTES_PER_HOUR, 60 * 60_000, totalBytes)
+
+    const uploadedFiles = []
+    const now = new Date()
+    const year = now.getFullYear().toString()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+
+    for (const { file, size, allowedType } of accepted) {
       // Generate unique filename
       const fileId = randomUUID()
       const timestamp = Date.now()
@@ -60,7 +82,7 @@ export default defineEventHandler(async (event) => {
       // Save file using nuxt-file-storage
       const fileToStore = {
         ...file,
-        size: buffer.length.toString(),
+        size: size.toString(),
         lastModified: Date.now().toString()
       }
       await storeFileLocally(
@@ -78,7 +100,7 @@ export default defineEventHandler(async (event) => {
         url: fileUrl,
         originalName: file.name,
         mimeType: file.type,
-        size: buffer.length,
+        size,
         type: allowedType.category,
         uploadedAt: now.toISOString()
       })

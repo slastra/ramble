@@ -4,6 +4,11 @@ import { getRoomRoster } from '../utils/botContext'
 import { sendBotMessage, sendBotTyping } from '../utils/livekitBot'
 import type { BotChatRequest, BotChatResponse, ChatMessage } from '../../shared/types/chat'
 
+// Each request costs OpenRouter calls, so bound what one caller can ask for. The
+// model only sees the last 10 context messages (openrouter.ts), so drop the rest.
+const MAX_CONTENT_LENGTH = 8000
+const MAX_CONTEXT_MESSAGES = 10
+
 // Strip leading "Name:" prefix the model occasionally emits despite system-prompt guidance.
 function stripBotNamePrefix(response: string, botName: string): string {
   const escaped = botName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -20,9 +25,15 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
       statusMessage: 'roomName, userName, content, and botNames are required'
     })
   }
+  assertTokenRoom(event, roomName)
+  rateLimit(event, 'chat', 20, 60_000)
+  if (content.length > MAX_CONTENT_LENGTH) {
+    throw createError({ statusCode: 413, statusMessage: 'Message is too long' })
+  }
 
+  // Each bot answers at most once, however often it's named
   const allBots = await loadBots(event)
-  const bots = botNames
+  const bots = [...new Set(botNames)]
     .map(name => allBots.find(b => b.name === name))
     .filter(bot => bot !== undefined)
   if (bots.length === 0) {
@@ -30,11 +41,11 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
   }
 
   const now = Date.now()
-  const history: ChatMessage[] = (context ?? []).map((msg, i) => ({
+  const history: ChatMessage[] = (context ?? []).slice(-MAX_CONTEXT_MESSAGES).map((msg, i) => ({
     id: `ctx-${now}-${i}`,
     userId: msg.role === 'model' ? `bot-${msg.userName}` : 'user',
     userName: msg.userName,
-    content: msg.content,
+    content: msg.content.slice(0, MAX_CONTENT_LENGTH),
     timestamp: now,
     type: msg.role === 'model' ? 'bot' : 'user'
   }))

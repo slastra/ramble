@@ -19,6 +19,8 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Missing required field: roomName'
       })
     }
+    assertTokenRoom(event, roomName)
+    rateLimit(event, 'cleanup-room', 10, 60_000)
 
     // Get shared RoomServiceClient
     const roomService = getRoomServiceClient()

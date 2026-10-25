@@ -13,6 +13,8 @@ export default defineEventHandler(async (event): Promise<CreateIngressResponse> 
         statusMessage: 'Missing required field: roomName'
       })
     }
+    assertTokenRoom(event, roomName)
+    rateLimit(event, 'whip-ingress', 10, 60_000)
 
     // Get runtime config for API credentials
     const config = useRuntimeConfig()

@@ -47,8 +47,9 @@ export default defineEventHandler(async (event) => {
   try {
     const verifier = new TokenVerifier(livekitKey, livekitSecret)
     const claims = await verifier.verify(token)
-    // Attach identity from verified claims to event context
+    // Attach identity and room from verified claims to event context
     event.context.livekitIdentity = claims.sub || claims.name
+    event.context.livekitRoom = claims.video?.room
   } catch {
     throw createError({
       statusCode: 401,

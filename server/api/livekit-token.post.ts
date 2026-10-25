@@ -9,6 +9,7 @@ interface TokenRequest {
 
 export default defineEventHandler(async (event) => {
   try {
+    rateLimit(event, 'token', 20, 60_000)
     const body = await readBody<TokenRequest>(event)
     const { roomName, participantName, participantMetadata } = body
 
