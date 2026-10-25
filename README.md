@@ -2,6 +2,29 @@
 
 Real-time chat application built with Nuxt 4 and LiveKit, featuring WebRTC-based video, audio, screen sharing, instant messaging, file sharing, and AI bot integration with DiceBear avatars.
 
+![A Ramble room: Jordan shares their screen in the main tile, Maya is talking, and the chat has a shared image, a reply from the Skippy bot and Maya typing](docs/screenshots/room.png)
+
+<details>
+<summary>More screenshots</summary>
+
+<p align="center">
+  <img src="docs/screenshots/join-dark.jpg" width="49%" alt="The join screen in dark mode: drifting contour lines, who's already in the room, and an avatar preview of the name being typed">
+  <img src="docs/screenshots/join-light.jpg" width="49%" alt="The same join screen in light mode">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/notifications.png" width="98%" alt="Settings, Notifications tab: notifications on for this device, for new messages and joins">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mobile-chat.png" width="30%" alt="Ramble on a phone: the chat">
+  <img src="docs/screenshots/mobile-video.png" width="30%" alt="Ramble on a phone: tiles stacked top to bottom, the screen share first">
+</p>
+
+</details>
+
+<sub>Screenshots are staged on a local server with made-up people; the screen share is Ramble's own tiling code.</sub>
+
 ## Features
 
 ### Core Functionality
