@@ -32,15 +32,6 @@ const emptyHint = computed(() => {
   return `Say hi, or mention ${list} to wake a bot up.`
 })
 
-// "Skippy is typing" under the messages (people and bots)
-const typingLabel = computed(() => {
-  const names = liveKitChat.typingUsers.value
-  if (names.length === 0) return ''
-  if (names.length === 1) return `${names[0]} is typing`
-  if (names.length === 2) return `${names[0]} and ${names[1]} are typing`
-  return 'Several people are typing'
-})
-
 // Follow new messages only while the reader is at the bottom; otherwise count them
 // on the jump button instead of yanking the view away from what they're reading
 const viewport = ref<HTMLElement>()
@@ -111,12 +102,7 @@ onUnmounted(() => resizeObserver?.disconnect())
           class="message-in"
         />
 
-        <div class="h-6 flex items-center gap-2 pl-10 pt-1">
-          <template v-if="typingLabel">
-            <UIcon name="i-lucide-ellipsis" class="size-4 text-dimmed animate-pulse" />
-            <UChatShimmer :text="typingLabel" class="text-xs" />
-          </template>
-        </div>
+        <ChatTypingIndicator :names="liveKitChat.typingUsers.value" />
       </div>
     </div>
 
