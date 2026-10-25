@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import type { UseLiveKitChatReturn } from '../composables/useLiveKitChat'
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
-
 interface FileUpload {
   url: string
   originalName: string
@@ -12,9 +9,9 @@ interface FileUpload {
 }
 
 // Inject LiveKit instances
-const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
-const liveKitBots = inject('liveKitBots') as { checkOutgoingMessage?: (text: string, roomName: string, wireContent?: string) => Promise<void> }
+const liveKitChat = injectRoomContext(LiveKitChatKey)
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
+const liveKitBots = injectRoomContext(LiveKitBotsKey)
 
 // Compute connection status directly from LiveKit room
 const connectionStatus = computed(() => {
@@ -78,9 +75,7 @@ const sendMessageWithAttachments = async (message: string, attachments?: FileUpl
   const wireContent = attachments && attachments.length > 0 ? JSON.stringify(messageData) : message
 
   // Check if this message should trigger a bot BEFORE sending
-  const botPromise = liveKitBots?.checkOutgoingMessage
-    ? liveKitBots.checkOutgoingMessage(message, liveKitRoom.roomName, wireContent)
-    : Promise.resolve()
+  const botPromise = liveKitBots.checkOutgoingMessage(message, liveKitRoom.roomName, wireContent)
 
   // Send the message through LiveKit data channel
   await sendMessage(wireContent)

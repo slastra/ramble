@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { RemoteVideoTrack, LocalVideoTrack } from 'livekit-client'
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
 
 interface Props {
   isOpen: boolean
@@ -11,7 +10,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
 
 const emit = defineEmits<{
   'update:isOpen': [value: boolean]

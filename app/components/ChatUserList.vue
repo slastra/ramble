@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
-import type { UseLiveKitChatReturn } from '../composables/useLiveKitChat'
-
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
-const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
+const liveKitChat = injectRoomContext(LiveKitChatKey)
 const { bots, toggleBot, isBotEnabled } = useBots()
 const { members } = useRoomMembers(liveKitRoom)
 

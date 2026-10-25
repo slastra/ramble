@@ -1,17 +1,10 @@
 import { RoomEvent } from 'livekit-client'
 import type { RemoteParticipant, Room } from 'livekit-client'
+import type { ChatMessage, ChatPacket, TypingPacket } from '../../shared/types/chat'
+import type { EventEmitter } from './useEventEmitter'
 
-export interface LiveKitChatMessage {
-  type: 'message' | 'bot' | 'system' | 'typing'
-  id: string
-  userId: string
-  userName: string
-  content: string
-  timestamp: number
-  metadata?: {
-    botName?: string
-    isAI?: boolean
-  }
+export interface LiveKitChatEvents {
+  messageReceived: [message: ChatMessage]
 }
 
 export interface UseLiveKitChatOptions {
@@ -24,40 +17,30 @@ export interface UseLiveKitChatOptions {
 
 export interface UseLiveKitChatReturn {
   // Chat state
-  messages: ComputedRef<LiveKitChatMessage[]>
-  isTyping: Ref<boolean>
+  messages: ComputedRef<ChatMessage[]>
   typingUsers: ComputedRef<string[]>
-  messageHistory: Ref<LiveKitChatMessage[]>
 
   // Methods
-  sendMessage: (content: string, type?: 'message' | 'bot' | 'system') => Promise<void>
+  sendMessage: (content: string) => Promise<void>
   sendTypingIndicator: (isTyping: boolean) => void
-  clearHistory: () => void
   addLocalSystemMessage: (content: string) => void
 
-  // Bot integration
-  sendBotMessage: (content: string, botName: string) => Promise<void>
-
   // Events
-  on: (event: string, handler: (...args: unknown[]) => void) => void
-  off: (event: string, handler: (...args: unknown[]) => void) => void
+  on: EventEmitter<LiveKitChatEvents>['on']
+  off: EventEmitter<LiveKitChatEvents>['off']
 }
 
 export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatReturn {
   const { room, userId, userName, maxHistorySize = 1000, token } = options
 
   // Chat state
-  const messageHistory = ref<LiveKitChatMessage[]>([])
+  const messageHistory = ref<ChatMessage[]>([])
   const isTyping = ref(false)
   const typingUsersMap = ref<Map<string, { userName: string, timestamp: number }>>(new Map())
 
-  // Event handlers
-  const eventHandlers = new Map<string, Set<(...args: unknown[]) => void>>()
+  const events = useEventEmitter<LiveKitChatEvents>()
 
-  // Computed properties
-  const messages = computed(() =>
-    messageHistory.value.filter(msg => msg.type !== 'typing')
-  )
+  const messages = computed(() => messageHistory.value)
 
   const typingUsers = computed(() => {
     const now = Date.now()
@@ -76,15 +59,15 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
   })
 
   // Message encoding/decoding
-  function encodeMessage(message: LiveKitChatMessage): Uint8Array<ArrayBuffer> {
+  function encodeMessage(message: ChatPacket): Uint8Array<ArrayBuffer> {
     const jsonString = JSON.stringify(message)
     return new TextEncoder().encode(jsonString)
   }
 
-  function decodeMessage(data: Uint8Array): LiveKitChatMessage | null {
+  function decodeMessage(data: Uint8Array): ChatPacket | null {
     try {
       const jsonString = new TextDecoder().decode(data)
-      return JSON.parse(jsonString) as LiveKitChatMessage
+      return JSON.parse(jsonString) as ChatPacket
     } catch (error) {
       console.error('[LiveKit Chat] Failed to decode message:', error)
       return null
@@ -97,7 +80,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
   }
 
   // Add message to history
-  function addMessageToHistory(message: LiveKitChatMessage) {
+  function addMessageToHistory(message: ChatMessage) {
     messageHistory.value.push(message)
 
     // Limit history size
@@ -105,7 +88,7 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
       messageHistory.value = messageHistory.value.slice(-maxHistorySize)
     }
 
-    emitEvent('messageReceived', message)
+    events.emit('messageReceived', message)
   }
 
   // Handle incoming data
@@ -150,47 +133,16 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
         playSound('messageReceived')
       }
     }
-
-    // Emit specific events based on message type
-    if (message.type === 'bot') {
-      emitEvent('botMessage', message)
-    } else if (message.type === 'system') {
-      emitEvent('systemMessage', message)
-    } else {
-      emitEvent('userMessage', message)
-    }
-  }
-
-  // Event management
-  function emitEvent(event: string, ...args: unknown[]) {
-    const handlers = eventHandlers.get(event)
-    if (handlers) {
-      handlers.forEach(handler => handler(...args))
-    }
-  }
-
-  function on(event: string, handler: (...args: unknown[]) => void) {
-    if (!eventHandlers.has(event)) {
-      eventHandlers.set(event, new Set())
-    }
-    eventHandlers.get(event)!.add(handler)
-  }
-
-  function off(event: string, handler: (...args: unknown[]) => void) {
-    const handlers = eventHandlers.get(event)
-    if (handlers) {
-      handlers.delete(handler)
-    }
   }
 
   // Public methods
-  async function sendMessage(content: string, type: 'message' | 'bot' | 'system' = 'message'): Promise<void> {
+  async function sendMessage(content: string): Promise<void> {
     if (!room.value) {
       throw new Error('Room not connected')
     }
 
-    const message: LiveKitChatMessage = {
-      type,
+    const message: ChatMessage = {
+      type: 'message',
       id: generateMessageId(),
       userId,
       userName,
@@ -216,8 +168,8 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
       body: {
         author: userName,
         content,
-        type,
-        room: 'main-chat-room',
+        type: message.type,
+        room: room.value.name,
         timestamp: message.timestamp
       }
     }).catch(() => {
@@ -230,56 +182,12 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     }
   }
 
-  async function sendBotMessage(content: string, botName: string): Promise<void> {
-    if (!room.value) {
-      throw new Error('Room not connected')
-    }
-
-    const message: LiveKitChatMessage = {
-      type: 'bot',
-      id: generateMessageId(),
-      userId: `bot-${botName}`,
-      userName: botName,
-      content,
-      timestamp: Date.now(),
-      metadata: {
-        botName,
-        isAI: true
-      }
-    }
-
-    // Add to local history immediately (sender doesn't receive their own data messages)
-    addMessageToHistory(message)
-
-    // Send via reliable data channel
-    const encodedMessage = encodeMessage(message)
-    await room.value.localParticipant.publishData(encodedMessage, {
-      reliable: true,
-      destinationIdentities: []
-    })
-
-    // Broadcast to message bus for SSE clients (daemon notifications)
-    $fetch('/api/broadcast-message', {
-      method: 'POST',
-      headers: token?.value ? { Authorization: `Bearer ${token.value}` } : {},
-      body: {
-        author: botName,
-        content,
-        type: 'bot',
-        room: 'main-chat-room',
-        timestamp: message.timestamp
-      }
-    }).catch(() => {
-      // Silently fail if server unavailable
-    })
-  }
-
   function sendTypingIndicator(typing: boolean): void {
     if (!room.value) return
 
     isTyping.value = typing
 
-    const typingMessage: LiveKitChatMessage = {
+    const typingMessage: TypingPacket = {
       type: 'typing',
       id: generateMessageId(),
       userId,
@@ -298,14 +206,8 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
     })
   }
 
-  function clearHistory(): void {
-    messageHistory.value = []
-    typingUsersMap.value.clear()
-    emitEvent('historyCleared')
-  }
-
   function addLocalSystemMessage(content: string): void {
-    const message: LiveKitChatMessage = {
+    const message: ChatMessage = {
       type: 'system',
       id: generateMessageId(),
       userId: 'system',
@@ -365,23 +267,12 @@ export function useLiveKitChat(options: UseLiveKitChatOptions): UseLiveKitChatRe
   })
 
   return {
-    // Chat state
     messages,
-    isTyping: readonly(isTyping),
     typingUsers,
-    messageHistory,
-
-    // Methods
     sendMessage,
     sendTypingIndicator,
-    clearHistory,
     addLocalSystemMessage,
-
-    // Bot integration
-    sendBotMessage,
-
-    // Events
-    on,
-    off
+    on: events.on,
+    off: events.off
   }
 }

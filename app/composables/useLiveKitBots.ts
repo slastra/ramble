@@ -1,7 +1,7 @@
-import type { UseLiveKitChatReturn, LiveKitChatMessage } from './useLiveKitChat'
+import type { UseLiveKitChatReturn } from './useLiveKitChat'
 import type { UseLiveKitRoomReturn } from './useLiveKitRoom'
 import type { BotConfig } from './useBots'
-import type { BotChatRequest, BotChatResponse, BotContextMessage } from '../../shared/types/chat'
+import type { BotChatRequest, BotChatResponse, BotContextMessage, ChatMessage } from '../../shared/types/chat'
 
 interface UseLiveKitBotsOptions {
   liveKitChat: UseLiveKitChatReturn
@@ -18,13 +18,13 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
 
   // Track bot response state
   const activeBotResponses = ref<Set<string>>(new Set())
-  const lastMessages = ref<LiveKitChatMessage[]>([])
+  const lastMessages = ref<ChatMessage[]>([])
 
   // Track timeout IDs for cleanup
   const timeoutIds = ref<Set<NodeJS.Timeout>>(new Set())
 
   // Calculate interjection probability for a bot
-  const calculateInterjectionProbability = (bot: BotConfig, participantCount: number, recentMessages: LiveKitChatMessage[]): number => {
+  const calculateInterjectionProbability = (bot: BotConfig, participantCount: number, recentMessages: ChatMessage[]): number => {
     if (!isBotEnabled(bot.name)) return 0
 
     // Always respond when user is alone (1 participant)
@@ -116,7 +116,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
     userMessage: string,
     roomName: string,
     isMention: boolean,
-    contextMessages?: LiveKitChatMessage[]
+    contextMessages?: ChatMessage[]
   ) => {
     try {
       // Mark bots as actively responding
@@ -170,7 +170,7 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
   }
 
   // Only track incoming messages for history (don't trigger bots)
-  const trackIncomingMessage = (message: LiveKitChatMessage) => {
+  const trackIncomingMessage = (message: ChatMessage) => {
     // Update message history for all messages
     // We need to track our own messages too for context continuity
     lastMessages.value.push(message)
@@ -179,20 +179,12 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
     }
   }
 
-  // Message handler for event system - only tracks history now
-  const messageHandler = (...args: unknown[]) => {
-    const message = args[0] as LiveKitChatMessage
-    trackIncomingMessage(message)
-  }
-
-  // Setup message listener
   const startListening = () => {
-    liveKitChat.on('messageReceived', messageHandler)
+    liveKitChat.on('messageReceived', trackIncomingMessage)
   }
 
-  // Stop listening
   const stopListening = () => {
-    liveKitChat.off('messageReceived', messageHandler)
+    liveKitChat.off('messageReceived', trackIncomingMessage)
   }
 
   // Initialize bots
@@ -227,3 +219,5 @@ export function useLiveKitBots(options: UseLiveKitBotsOptions) {
     stopListening
   }
 }
+
+export type UseLiveKitBotsReturn = ReturnType<typeof useLiveKitBots>

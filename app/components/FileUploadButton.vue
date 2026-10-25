@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
-
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn | undefined
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
 
 interface FileUpload {
   url: string

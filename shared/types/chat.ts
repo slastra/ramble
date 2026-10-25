@@ -1,46 +1,31 @@
-// Shared chat message type used by components
-// Maps to LiveKitChatMessage but with standardized 'type' field
+// A chat message as it travels over the LiveKit data channel and sits in the client's
+// history. Bot replies posted by the server (server/utils/livekitBot.ts) use it too.
+// `content` is plain text, or a JSON MessageEnvelope when files are attached.
 export interface ChatMessage {
   id: string
   userId: string
   userName: string
   content: string
   timestamp: number
-  type: 'user' | 'bot' | 'system'
-  status?: 'sent' | 'pending' | 'failed'
+  type: 'message' | 'bot' | 'system'
   metadata?: {
     botName?: string
     isAI?: boolean
   }
 }
 
-// Type helper to convert LiveKitChatMessage to ChatMessage
-export function convertToLegacyFormat(lkMessage: {
+// "<name> is typing": sent alongside messages but never kept in history
+export interface TypingPacket {
+  type: 'typing'
   id: string
   userId: string
   userName: string
-  content: string
+  content: 'start' | 'stop'
   timestamp: number
-  type: 'message' | 'bot' | 'system' | 'typing'
-  metadata?: { botName?: string, isAI?: boolean }
-}): ChatMessage {
-  return {
-    id: lkMessage.id,
-    userId: lkMessage.userId,
-    userName: lkMessage.userName,
-    content: lkMessage.content,
-    timestamp: lkMessage.timestamp,
-    type: lkMessage.type === 'message'
-      ? 'user'
-      : lkMessage.type === 'bot'
-        ? 'bot'
-        : lkMessage.type === 'system'
-          ? 'system'
-          : 'user',
-    status: 'sent',
-    metadata: lkMessage.metadata
-  }
 }
+
+// Anything that arrives on the chat data channel
+export type ChatPacket = ChatMessage | TypingPacket
 
 // File shared in a chat message (produced by /api/upload)
 export interface ChatAttachment {

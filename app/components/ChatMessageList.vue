@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import type { UseLiveKitChatReturn } from '../composables/useLiveKitChat'
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
-import type { ChatMessage } from '../../shared/types/chat'
-import { convertToLegacyFormat } from '../../shared/types/chat'
-
-const liveKitChat = inject('liveKitChat') as UseLiveKitChatReturn
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
+const liveKitChat = injectRoomContext(LiveKitChatKey)
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
 const { clientId } = useUser()
 
 // A run of messages from one sender within this window shares one avatar and header
@@ -13,13 +8,9 @@ const GROUP_WINDOW_MS = 5 * 60 * 1000
 // How close to the bottom still counts as "at the bottom" for auto-scroll
 const BOTTOM_THRESHOLD_PX = 80
 
-const messages = computed(() =>
-  liveKitChat.messages.value.map(convertToLegacyFormat)
-)
-
 // Hide bot messages that are still empty while a reply streams in
 const visibleMessages = computed(() =>
-  messages.value.filter((m: ChatMessage) => m.type !== 'bot' || m.content.trim().length > 0)
+  liveKitChat.messages.value.filter(m => m.type !== 'bot' || m.content.trim().length > 0)
 )
 
 const rows = computed(() => visibleMessages.value.map((message, i) => {

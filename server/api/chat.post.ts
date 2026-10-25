@@ -47,7 +47,7 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
     userName: msg.userName,
     content: msg.content.slice(0, MAX_CONTENT_LENGTH),
     timestamp: now,
-    type: msg.role === 'model' ? 'bot' : 'user'
+    type: msg.role === 'model' ? 'bot' : 'message'
   }))
   history.push({
     id: `msg-${now}`,
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event): Promise<BotChatResponse> => {
     userName,
     content,
     timestamp: now,
-    type: 'user'
+    type: 'message'
   })
 
   const roster = await getRoomRoster(roomName)

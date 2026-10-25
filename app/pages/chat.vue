@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { RemoteParticipant } from 'livekit-client'
+
 definePageMeta({
   middleware: 'auth'
 })
@@ -10,7 +12,7 @@ const isSettingsOpen = ref(false)
 
 // Initialize LiveKit room
 const liveKitRoom = useLiveKitRoom({
-  roomName: 'main-chat-room',
+  roomName: ROOM_NAME,
   participantName: userName.value || 'Anonymous',
   participantMetadata: {
     userId: clientId.value
@@ -71,36 +73,27 @@ const chatActuallyVisible = computed(() => isLargeViewport.value || isChatVisibl
 const { isDaemonConnected } = useDaemonSync(chatActuallyVisible)
 
 // Provide instances to child components
-provide('liveKitRoom', liveKitRoom)
-provide('liveKitChat', liveKitChat)
-provide('liveKitBots', liveKitBots)
+provide(LiveKitRoomKey, liveKitRoom)
+provide(LiveKitChatKey, liveKitChat)
+provide(LiveKitBotsKey, liveKitBots)
+
+const { playSound } = useSoundManager()
+const { applySavedDevices } = useMediaControls(liveKitRoom)
 
 // Named handlers for event listener cleanup
-const handleParticipantConnected = (participant: unknown) => {
-  const p = participant as { name?: string, identity: string }
-  const name = p.name || p.identity
-  liveKitChat.addLocalSystemMessage(`${name} joined the chat`)
-  const { playSound } = useSoundManager()
+const handleParticipantConnected = (participant: RemoteParticipant) => {
+  liveKitChat.addLocalSystemMessage(`${participant.name || participant.identity} joined the chat`)
   playSound('userJoined')
 }
 
-const handleParticipantDisconnected = (participant: unknown) => {
-  const p = participant as { name?: string, identity: string }
-  const name = p.name || p.identity
-  liveKitChat.addLocalSystemMessage(`${name} left the chat`)
-  const { playSound } = useSoundManager()
+const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+  liveKitChat.addLocalSystemMessage(`${participant.name || participant.identity} left the chat`)
   playSound('userLeft')
 }
 
-const devicePrefs = useDevicePreferences()
-
 const handleConnected = () => {
   isReady.value = true
-  if (devicePrefs.microphone.value) handleDeviceChange('audioInput', devicePrefs.microphone.value)
-  if (devicePrefs.camera.value) handleDeviceChange('videoInput', devicePrefs.camera.value)
-  if (devicePrefs.speaker.value && liveKitRoom.supportsSpeakerSelection.value) {
-    handleDeviceChange('audioOutput', devicePrefs.speaker.value)
-  }
+  applySavedDevices()
 }
 
 const handleDisconnected = () => {
@@ -125,24 +118,6 @@ onUnmounted(async () => {
 async function leave() {
   await liveKitRoom.disconnect()
   await navigateTo('/')
-}
-
-const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutput', deviceId: string) => {
-  try {
-    switch (type) {
-      case 'audioInput':
-        await liveKitRoom.switchMicrophone(deviceId)
-        break
-      case 'videoInput':
-        await liveKitRoom.switchCamera(deviceId)
-        break
-      case 'audioOutput':
-        await liveKitRoom.switchSpeaker(deviceId)
-        break
-    }
-  } catch (error) {
-    console.error(`[Chat] Failed to change ${type} device:`, error)
-  }
 }
 </script>
 
@@ -302,13 +277,7 @@ const handleDeviceChange = async (type: 'videoInput' | 'audioInput' | 'audioOutp
     <!-- Settings Modal -->
     <UModal v-model:open="isSettingsOpen" title="Settings">
       <template #body>
-        <Settings
-          :supports-speaker-selection="liveKitRoom.supportsSpeakerSelection.value"
-          :selected-camera="liveKitRoom.selectedCamera.value ?? undefined"
-          :selected-microphone="liveKitRoom.selectedMicrophone.value ?? undefined"
-          :selected-speaker="liveKitRoom.selectedSpeaker.value ?? undefined"
-          @device-change="handleDeviceChange"
-        />
+        <Settings />
       </template>
     </UModal>
   </div>

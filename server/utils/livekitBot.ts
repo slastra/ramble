@@ -1,6 +1,7 @@
 import { DataPacket_Kind } from 'livekit-server-sdk'
 import { getRoomServiceClient } from './livekit'
 import { getMessageBus } from './messageBus'
+import type { ChatMessage, TypingPacket } from '../../shared/types/chat'
 
 const encoder = new TextEncoder()
 
@@ -11,7 +12,7 @@ export async function sendBotMessage(
 ) {
   const client = getRoomServiceClient()
 
-  const message = {
+  const message: ChatMessage = {
     type: 'bot',
     id: `bot-${Date.now()}-${Math.random()}`,
     userId: `bot-${botName}`,
@@ -38,7 +39,7 @@ export async function sendBotMessage(
 // shape as the client-side typing indicator in useLiveKitChat. Sent reliable (unlike
 // people's typing) so start/stop stay ordered with the bot's reply message.
 export async function sendBotTyping(roomName: string, botName: string, isTyping: boolean) {
-  const packet = {
+  const packet: TypingPacket = {
     type: 'typing',
     id: `bot-typing-${Date.now()}-${Math.random()}`,
     userId: `bot-${botName}`,

@@ -24,7 +24,7 @@ async function validateAndJoin() {
     const validation = await $fetch('/api/validate-username', {
       method: 'POST',
       body: {
-        roomName: 'main-chat-room',
+        roomName: ROOM_NAME,
         username: state.name.trim(),
         clientId: clientId.value
       }

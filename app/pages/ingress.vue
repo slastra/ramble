@@ -9,7 +9,7 @@ const viewerName = `${VIEWER_IDENTITY_PREFIX}${Math.random().toString(36).substr
 
 // Connect to LiveKit room
 const liveKitRoom = useLiveKitRoom({
-  roomName: 'main-chat-room',
+  roomName: ROOM_NAME,
   participantName: viewerName,
   participantMetadata: {
     userId: clientId.value

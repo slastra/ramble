@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useDevicesList } from '@vueuse/core'
 import type { IngressInfo } from '#shared/types/ingress'
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
+import type { MediaDeviceKind } from '../composables/useMediaControls'
 
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn | undefined
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
+const { chooseDevice } = useMediaControls(liveKitRoom)
 
 interface NtfyConfig {
   url: string
@@ -11,62 +11,23 @@ interface NtfyConfig {
   subscriptionUrl: string
 }
 
-const props = defineProps<{
-  selectedCamera?: string
-  selectedMicrophone?: string
-  selectedSpeaker?: string
-  supportsSpeakerSelection?: boolean
-}>()
+const cameras = liveKitRoom.cameras
+const microphones = liveKitRoom.microphones
+const speakers = liveKitRoom.speakers
+const supportsSpeakerSelection = liveKitRoom.supportsSpeakerSelection
 
-const emit = defineEmits<{
-  deviceChange: [
-    type: 'videoInput' | 'audioInput' | 'audioOutput',
-    deviceId: string
-  ]
-}>()
-
-// Device preferences management
-const devicePrefs = useDevicePreferences()
-
-// Device management
-const {
-  videoInputs: cameras,
-  audioInputs: microphones,
-  audioOutputs: speakers
-} = useDevicesList({
-  requestPermissions: false
-})
-
-// Selected devices - computed from props (always use LiveKit's selected device)
-const internalSelectedCamera = computed({
-  get: () => props.selectedCamera || '',
-  set: (val) => {
-    if (val) {
-      emit('deviceChange', 'videoInput', val)
-      devicePrefs.camera.value = val // Save preference
+// The selects show what LiveKit is using; picking one switches and remembers it
+function deviceModel(kind: MediaDeviceKind, selected: Ref<string | null>) {
+  return computed({
+    get: () => selected.value || '',
+    set: (deviceId: string) => {
+      if (deviceId) chooseDevice(kind, deviceId)
     }
-  }
-})
-
-const internalSelectedMicrophone = computed({
-  get: () => props.selectedMicrophone || '',
-  set: (val) => {
-    if (val) {
-      emit('deviceChange', 'audioInput', val)
-      devicePrefs.microphone.value = val // Save preference
-    }
-  }
-})
-
-const internalSelectedSpeaker = computed({
-  get: () => props.selectedSpeaker || '',
-  set: (val) => {
-    if (val) {
-      emit('deviceChange', 'audioOutput', val)
-      devicePrefs.speaker.value = val // Save preference
-    }
-  }
-})
+  })
+}
+const selectedCamera = deviceModel('videoInput', liveKitRoom.selectedCamera)
+const selectedMicrophone = deviceModel('audioInput', liveKitRoom.selectedMicrophone)
+const selectedSpeaker = deviceModel('audioOutput', liveKitRoom.selectedSpeaker)
 
 // Ntfy configuration
 const ntfyConfig = ref<NtfyConfig | null>(null)
@@ -80,14 +41,46 @@ const showStreamKey = ref(false)
 const toast = useToast()
 
 const tabs = [
-  { label: 'Devices', icon: 'i-lucide-headphones', slot: 'devices' as const },
-  { label: 'Sounds', icon: 'i-lucide-bell', slot: 'sounds' as const },
-  { label: 'Notifications', icon: 'i-lucide-smartphone', slot: 'notifications' as const },
-  { label: 'Streaming', icon: 'i-lucide-radio', slot: 'streaming' as const }
+  { label: 'Devices', icon: 'i-lucide-headphones', value: 'devices', slot: 'devices' as const },
+  { label: 'Sounds', icon: 'i-lucide-bell', value: 'sounds', slot: 'sounds' as const },
+  { label: 'Notifications', icon: 'i-lucide-smartphone', value: 'notifications', slot: 'notifications' as const },
+  { label: 'Streaming', icon: 'i-lucide-radio', value: 'streaming', slot: 'streaming' as const }
 ]
+const activeTab = ref('devices')
+
+// Asking for the stream details creates the room's ingress on first use, so only do
+// it when someone opens the Streaming tab
+async function loadIngress() {
+  if (ingressInfo.value || isLoadingIngress.value) return
+  isLoadingIngress.value = true
+  ingressError.value = null
+
+  try {
+    const headers: Record<string, string> = {}
+    if (liveKitRoom.livekitToken.value) headers.Authorization = `Bearer ${liveKitRoom.livekitToken.value}`
+
+    const response = await $fetch('/api/whip-ingress', {
+      method: 'POST',
+      headers,
+      body: { roomName: liveKitRoom.roomName }
+    })
+    ingressInfo.value = response.ingress
+  } catch (error) {
+    console.error('[Settings] Failed to create WHIP ingress:', error)
+    ingressError.value = 'Failed to create ingress. Ensure LiveKit server has ingress service enabled.'
+  } finally {
+    isLoadingIngress.value = false
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'streaming') loadIngress()
+})
 
 onMounted(async () => {
-  // Load Ntfy configuration
+  // Device labels are blank until the browser grants access; refresh in case it has since
+  liveKitRoom.refreshDevices()
+
   isLoadingNtfy.value = true
   try {
     ntfyConfig.value = await $fetch('/api/ntfy-config')
@@ -95,32 +88,6 @@ onMounted(async () => {
     console.error('[Settings] Failed to load ntfy config:', error)
   } finally {
     isLoadingNtfy.value = false
-  }
-
-  // Load WHIP ingress
-  isLoadingIngress.value = true
-  ingressError.value = null
-
-  try {
-    const headers: Record<string, string> = {}
-    if (liveKitRoom?.livekitToken.value) {
-      headers.Authorization = `Bearer ${liveKitRoom.livekitToken.value}`
-    }
-
-    const response = await $fetch('/api/whip-ingress', {
-      method: 'POST',
-      headers,
-      body: {
-        roomName: 'main-chat-room'
-      }
-    })
-
-    ingressInfo.value = response.ingress
-  } catch (error) {
-    console.error('[Settings] Failed to create WHIP ingress:', error)
-    ingressError.value = 'Failed to create ingress. Ensure LiveKit server has ingress service enabled.'
-  } finally {
-    isLoadingIngress.value = false
   }
 })
 
@@ -158,7 +125,7 @@ const copyToClipboard = async (text: string, label: string) => {
       <div class="space-y-4">
         <UFormField v-if="cameras.length > 0" label="Camera">
           <USelect
-            v-model="internalSelectedCamera"
+            v-model="selectedCamera"
             :items="cameras.map(cam => ({ value: cam.deviceId, label: cam.label || `Camera ${cam.deviceId.slice(0, 8)}` }))"
             value-key="value"
             placeholder="Select camera"
@@ -169,7 +136,7 @@ const copyToClipboard = async (text: string, label: string) => {
 
         <UFormField v-if="microphones.length > 0" label="Microphone">
           <USelect
-            v-model="internalSelectedMicrophone"
+            v-model="selectedMicrophone"
             :items="microphones.map(mic => ({ value: mic.deviceId, label: mic.label || `Microphone ${mic.deviceId.slice(0, 8)}` }))"
             value-key="value"
             placeholder="Select microphone"
@@ -180,7 +147,7 @@ const copyToClipboard = async (text: string, label: string) => {
 
         <UFormField v-if="speakers.length > 0 && supportsSpeakerSelection" label="Speaker">
           <USelect
-            v-model="internalSelectedSpeaker"
+            v-model="selectedSpeaker"
             :items="speakers.map(speaker => ({ value: speaker.deviceId, label: speaker.label || `Speaker ${speaker.deviceId.slice(0, 8)}` }))"
             value-key="value"
             placeholder="Select speaker"

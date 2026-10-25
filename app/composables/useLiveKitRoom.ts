@@ -20,10 +20,29 @@ import type {
   LocalAudioTrack,
   Participant,
   RemoteTrackPublication,
-  VideoQuality
+  VideoQuality,
+  DisconnectReason
 } from 'livekit-client'
 
 import type { ParticipantTracks } from './useParticipantTracking'
+import type { EventEmitter } from './useEventEmitter'
+
+// What the room composable re-emits, with each handler's arguments
+export interface LiveKitRoomEvents {
+  connected: []
+  disconnected: [reason?: DisconnectReason]
+  reconnecting: []
+  reconnected: []
+  participantConnected: [participant: RemoteParticipant]
+  participantDisconnected: [participant: RemoteParticipant]
+  trackSubscribed: [track: RemoteTrack, publication: TrackPublication, participant: RemoteParticipant]
+  trackUnsubscribed: [track: RemoteTrack, publication: TrackPublication, participant: RemoteParticipant]
+  trackMuted: [publication: TrackPublication, participant: Participant]
+  trackUnmuted: [publication: TrackPublication, participant: Participant]
+  localTrackPublished: [publication: TrackPublication, participant: LocalParticipant]
+  localTrackUnpublished: [publication: TrackPublication, participant: LocalParticipant]
+  connectionQualityChanged: [quality: ConnectionQuality, participant: Participant]
+}
 
 export interface UseLiveKitRoomOptions {
   roomName: string
@@ -104,8 +123,8 @@ export interface UseLiveKitRoomReturn {
   livekitToken: Readonly<Ref<string | null>>
 
   // Events
-  on: (event: string, handler: (...args: unknown[]) => void) => void
-  off: (event: string, handler: (...args: unknown[]) => void) => void
+  on: EventEmitter<LiveKitRoomEvents>['on']
+  off: EventEmitter<LiveKitRoomEvents>['off']
 }
 
 function safeParseMetadata(metadata: string | undefined, fallback: Record<string, unknown>): Record<string, unknown> {
@@ -141,7 +160,7 @@ export function useLiveKitRoom(options: UseLiveKitRoomOptions): UseLiveKitRoomRe
   const audioMonitoring = useAudioLevelMonitoring()
   const deviceManagement = useDeviceManagement()
   const participantTracking = useParticipantTracking()
-  const eventEmitter = useEventEmitter()
+  const eventEmitter = useEventEmitter<LiveKitRoomEvents>()
 
   // Connection quality state
   const participantConnectionQuality = ref<Map<string, ConnectionQuality>>(new Map())

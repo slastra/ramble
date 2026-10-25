@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { UseLiveKitRoomReturn } from '../composables/useLiveKitRoom'
 import type { RemoteVideoTrack, LocalVideoTrack } from 'livekit-client'
 import type { ComponentPublicInstance } from 'vue'
 import { VideoQuality } from 'livekit-client'
 import { GridStack } from 'gridstack'
 
-const liveKitRoom = inject('liveKitRoom') as UseLiveKitRoomReturn
+const liveKitRoom = injectRoomContext(LiveKitRoomKey)
 const { members } = useRoomMembers(liveKitRoom)
-const toast = useToast()
+const { setCamera, setScreenShare } = useMediaControls(liveKitRoom)
 
 const emptyTitle = computed(() => members.value.length <= 1 ? 'It\'s just you so far' : 'Nobody\'s on camera')
 const emptyDescription = computed(() => {
@@ -17,17 +16,9 @@ const emptyDescription = computed(() => {
   return `${names} ${others.length === 1 ? 'is' : 'are'} here. Go live to start the conversation.`
 })
 
-async function goLive(action: () => Promise<void>, what: string) {
-  try {
-    await action()
-  } catch (error) {
-    toast.add({ title: `Couldn't ${what}`, description: error instanceof Error ? error.message : undefined, icon: 'i-lucide-circle-alert', color: 'error' })
-  }
-}
-
 const emptyActions = computed(() => [
-  { label: 'Turn on camera', icon: 'i-lucide-video', onClick: () => goLive(() => liveKitRoom.enableCamera(true), 'turn on the camera') },
-  { label: 'Share screen', icon: 'i-lucide-screen-share', color: 'neutral' as const, variant: 'subtle' as const, onClick: () => goLive(() => liveKitRoom.enableScreenShare(true), 'share your screen') }
+  { label: 'Turn on camera', icon: 'i-lucide-video', onClick: () => setCamera(true) },
+  { label: 'Share screen', icon: 'i-lucide-screen-share', color: 'neutral' as const, variant: 'subtle' as const, onClick: () => setScreenShare(true) }
 ])
 
 // Fullscreen modal state
