@@ -22,3 +22,17 @@ export function isHiddenFromChat(identity: string | undefined): boolean {
     || identity === OBS_STREAM_IDENTITY
     || identity.startsWith(VIEWER_IDENTITY_PREFIX)
 }
+
+/**
+ * True for identities only the server may hand out: the OBS ingress stream and AI
+ * bots. Case-insensitive so lookalikes such as "OBS-Stream" can't pose as them.
+ */
+export function isReservedIdentity(identity: string): boolean {
+  const lower = identity.toLowerCase()
+  return lower === OBS_STREAM_IDENTITY || lower.startsWith(BOT_IDENTITY_PREFIX)
+}
+
+/** True for /ingress viewers, who get a watch-only token. */
+export function isViewerIdentity(identity: string): boolean {
+  return identity.startsWith(VIEWER_IDENTITY_PREFIX)
+}

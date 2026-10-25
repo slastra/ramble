@@ -1,8 +1,7 @@
 import { readFile } from 'fs/promises'
 import type { BotConfig } from './bots'
 import { buildRoomContext } from './botContext'
-import type { ChatMessage } from '../types/chat'
-import type { ChatAttachment } from '../../shared/types/chat'
+import type { ChatAttachment, ChatMessage } from '../../shared/types/chat'
 import type { OpenRouterChatRequest, OpenRouterChatResponse, OpenRouterContentPart, OpenRouterMessage } from '../types/openrouter'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'

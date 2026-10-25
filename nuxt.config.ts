@@ -37,6 +37,8 @@ export default defineNuxtConfig({
     myUsername: process.env.MY_USERNAME || '',
     ntfyUrl: process.env.NTFY_URL || '',
     ntfyTopic: process.env.NTFY_TOPIC || '',
+    // Shared secret ramble-daemon sends to /api/events; the stream is off when unset
+    eventsToken: process.env.EVENTS_TOKEN || '',
     // Public keys that are exposed to the client
     public: {
       livekitUrl: process.env.LIVEKIT_URL || 'ws://localhost:7880',

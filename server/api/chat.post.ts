@@ -2,8 +2,7 @@ import { generateBotResponse } from '../utils/openrouter'
 import { loadBots } from '../utils/bots'
 import { getRoomRoster } from '../utils/botContext'
 import { sendBotMessage, sendBotTyping } from '../utils/livekitBot'
-import type { ChatMessage } from '../types/chat'
-import type { BotChatRequest, BotChatResponse } from '../../shared/types/chat'
+import type { BotChatRequest, BotChatResponse, ChatMessage } from '../../shared/types/chat'
 
 // Strip leading "Name:" prefix the model occasionally emits despite system-prompt guidance.
 function stripBotNamePrefix(response: string, botName: string): string {

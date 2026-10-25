@@ -20,6 +20,14 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // The OBS stream and bots are server-side identities; nobody may join as them
+    if (isReservedIdentity(participantName)) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'That name is reserved'
+      })
+    }
+
     // Get runtime config for API credentials
     const config = useRuntimeConfig()
     const { livekitKey, livekitSecret, public: { livekitUrl } } = config
@@ -82,13 +90,14 @@ export default defineEventHandler(async (event) => {
       metadata: participantMetadata ? JSON.stringify(participantMetadata) : undefined
     })
 
-    // Add video grants as specified in documentation
+    // /ingress viewers are hidden from the chat, so they only get to watch
+    const canPublish = !isViewerIdentity(participantName)
     at.addGrant({
       roomJoin: true,
       room: roomName,
-      canPublish: true,
+      canPublish,
       canSubscribe: true,
-      canPublishData: true
+      canPublishData: canPublish
     })
 
     // Generate the JWT token

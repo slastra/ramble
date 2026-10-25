@@ -29,6 +29,15 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // Names the stream, bots, and /ingress viewers use are hidden from the user list
+    if (isReservedIdentity(trimmedUsername) || isHiddenFromChat(trimmedUsername)) {
+      return {
+        valid: false,
+        message: 'That name is reserved',
+        suggestions: []
+      }
+    }
+
     // Get shared RoomServiceClient
     const roomService = getRoomServiceClient()
 

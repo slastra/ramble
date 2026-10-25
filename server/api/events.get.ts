@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { getMessageBus, type ChatMessageEvent } from '../utils/messageBus'
 
 interface SseClient {
@@ -9,7 +10,23 @@ interface SseClient {
 // Store connected SSE clients
 const sseClients = new Map<string, SseClient>()
 
+// Compare digests so the check takes the same time whatever the token's length
+function tokenMatches(given: string, expected: string): boolean {
+  const digest = (value: string) => createHash('sha256').update(value).digest()
+  return timingSafeEqual(digest(given), digest(expected))
+}
+
 export default defineEventHandler(async (event) => {
+  // The stream carries every room's messages, so only ramble-daemon may read it
+  const { eventsToken } = useRuntimeConfig()
+  const authHeader = getHeader(event, 'authorization')
+  if (!eventsToken || !authHeader?.startsWith('Bearer ') || !tokenMatches(authHeader.slice(7), eventsToken)) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Invalid or missing events token'
+    })
+  }
+
   const query = getQuery(event)
   const username = typeof query.username === 'string' ? query.username.trim().slice(0, 100) : ''
 
