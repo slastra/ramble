@@ -60,11 +60,16 @@ const connectionLabel = computed(() => {
   return isDaemonConnected.value ? 'Connected · desktop notifications on' : 'Connected'
 })
 
-// Track if chat sidebar is open
-const isChatVisible = ref(true)
-
 // Detect viewport size (large breakpoint is 1024px in Tailwind)
 const isLargeViewport = useMediaQuery('(min-width: 1024px)')
+
+// `open` only drives the sidebar's mobile slideover. Leaving it open on desktop keeps
+// that (CSS-hidden) modal mounted, which locks the page with pointer-events: none.
+// So: open by default on small screens only, and close it when the window widens.
+const isChatVisible = ref(!isLargeViewport.value)
+watch(isLargeViewport, (large) => {
+  if (large) isChatVisible.value = false
+})
 
 // Computed: chat is visible if large viewport OR manually opened on small screens
 const chatActuallyVisible = computed(() => isLargeViewport.value || isChatVisible.value)
