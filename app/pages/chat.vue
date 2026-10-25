@@ -105,6 +105,14 @@ const handleDisconnected = () => {
   isReady.value = false
 }
 
+// A join that fails (token, signalling, or the media connection timing out) leaves an
+// error and stops connecting; show that with a retry instead of spinning forever
+const joinFailed = computed(() => !isReady.value && !!liveKitRoom.error.value && !liveKitRoom.isConnecting.value)
+const joinFailedActions = [
+  { label: 'Try again', icon: 'i-lucide-refresh-cw', onClick: () => liveKitRoom.connect().catch(() => {}) },
+  { label: 'Back', icon: 'i-lucide-arrow-left', color: 'neutral' as const, variant: 'subtle' as const, to: '/' }
+]
+
 onMounted(() => {
   liveKitRoom.on('participantConnected', handleParticipantConnected)
   liveKitRoom.on('participantDisconnected', handleParticipantDisconnected)
@@ -271,8 +279,18 @@ async function leave() {
       </div>
     </div>
 
-    <div v-else class="flex items-center justify-center h-dvh">
+    <div v-else class="flex items-center justify-center h-dvh p-6">
       <UEmpty
+        v-if="joinFailed"
+        variant="naked"
+        icon="i-lucide-unplug"
+        title="Couldn't connect to the room"
+        description="Check your connection and try again. If it keeps happening, a firewall or VPN may be blocking calls."
+        :actions="joinFailedActions"
+        class="max-w-sm"
+      />
+      <UEmpty
+        v-else
         variant="naked"
         loading
         title="Joining the room…"

@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
 
         return {
           valid: false,
-          message: 'Username is already taken',
+          message: 'Someone in the room is already using that name',
           suggestions
         }
       }

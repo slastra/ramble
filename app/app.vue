@@ -17,8 +17,8 @@ useHead({
   }
 })
 
-const title = 'Ramble'
-const description = 'A real-time chat application with WebRTC video/audio and AI bots.'
+const title = 'Ramble · Ephemeral conferencing'
+const description = 'Ephemeral video, voice and chat. No accounts, no history. Join with just a name.'
 
 useSeoMeta({
   title,

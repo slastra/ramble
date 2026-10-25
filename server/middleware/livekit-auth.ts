@@ -4,6 +4,7 @@ import { TokenVerifier } from 'livekit-server-sdk'
 const PUBLIC_PATHS = [
   '/api/livekit-token',
   '/api/validate-username',
+  '/api/room-presence',
   '/api/bots',
   '/api/ntfy-config',
   '/api/download/',

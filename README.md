@@ -183,6 +183,7 @@ Unless marked *public*, an endpoint needs the caller's LiveKit token as `Authori
 ### LiveKit & Identity
 - `POST /api/livekit-token` — *public*. Issues a 10-minute room token. Refuses the reserved identities `obs-stream` and `ai-*`; `Viewer-*` names (the `/ingress` page) get watch-only tokens
 - `POST /api/validate-username` — *public*. Checks a name is free (returning users are recognized by clientId) and not one the user list hides
+- `GET /api/room-presence` — *public*. Display names of the people in the room, for the join screen
 - `POST /api/whip-ingress` — Creates or returns the room's WHIP ingress (URL + stream key) for OBS
 - `POST /api/cleanup-room` — Removes participants that have been disconnected longer than `maxIdleMinutes`
 
@@ -207,6 +208,7 @@ Tokens are free to mint, so `server/utils/guards.ts` applies per-IP limits (in m
 |---|---|
 | `/api/livekit-token` | 20 / minute |
 | `/api/validate-username` | 30 / minute |
+| `/api/room-presence` | 30 / minute |
 | `/api/chat` | 20 / minute |
 | `/api/notify` | 30 / minute |
 | `/api/broadcast-message` | 60 / minute |
