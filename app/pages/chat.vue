@@ -242,6 +242,7 @@ async function leave() {
                   size="sm"
                   position="top-right"
                   inset
+                  :ui="{ base: 'translate-y-1.5 translate-x-0.5 ring-2' }"
                 >
                   <span class="text-2xl font-semibold logo">Ramble</span>
                 </UChip>
@@ -318,7 +319,7 @@ async function leave() {
     </div>
 
     <!-- Settings Modal -->
-    <UModal v-model:open="isSettingsOpen" title="Settings">
+    <UModal v-model:open="isSettingsOpen" title="Settings" :ui="{ body: 'flex min-h-0 flex-col p-0 sm:p-0' }">
       <template #body>
         <Settings />
       </template>

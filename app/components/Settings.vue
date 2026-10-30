@@ -95,12 +95,14 @@ const copyToClipboard = async (text: string, label: string) => {
 </script>
 
 <template>
+  <!-- The tabs stay put under the modal header; only the active tab's content scrolls -->
   <UTabs
+    v-model="activeTab"
     :items="tabs"
     variant="link"
     size="sm"
-    class="w-full"
-    :ui="{ content: 'pt-5' }"
+    class="min-h-0 w-full flex-1 gap-0"
+    :ui="{ list: 'shrink-0 px-2 sm:px-4', content: 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-6' }"
   >
     <template #devices>
       <div class="space-y-4">
