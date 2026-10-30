@@ -245,7 +245,10 @@ function useSuggestion(suggestion: string) {
           </form>
 
           <p class="rise text-center text-xs text-dimmed text-balance" style="animation-delay: 180ms">
-            No accounts, no history. Your name stays in this browser.
+            Made with
+            <ULink to="https://nuxt.com" target="_blank" class="text-muted hover:text-highlighted">Nuxt</ULink>
+            and
+            <ULink to="https://livekit.io" target="_blank" class="text-muted hover:text-highlighted">LiveKit</ULink>
           </p>
         </div>
       </div>
