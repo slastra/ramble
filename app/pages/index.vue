@@ -183,18 +183,20 @@ function useSuggestion(suggestion: string) {
                 class="flex max-w-full items-center gap-2.5 rounded-full bg-elevated/70 py-1 pr-3.5 ring ring-default backdrop-blur-sm"
                 :class="present.length ? 'pl-1' : 'pl-3.5'"
               >
-                <UAvatarGroup v-if="present.length" size="xs" :max="4">
-                  <UAvatar
-                    v-for="name in present"
-                    :key="name"
-                    :src="useDiceBearAvatar(name).value"
-                    :alt="name"
-                  />
-                </UAvatarGroup>
-                <span class="relative flex size-2 shrink-0" aria-hidden="true">
-                  <span v-if="present.length" class="absolute inset-0 rounded-full bg-success motion-safe:animate-ping opacity-60" />
-                  <span class="relative size-2 rounded-full" :class="present.length ? 'bg-success' : 'bg-dimmed/60'" />
-                </span>
+                <template v-if="present.length">
+                  <UAvatarGroup size="xs" :max="4">
+                    <UAvatar
+                      v-for="name in present"
+                      :key="name"
+                      :src="useDiceBearAvatar(name).value"
+                      :alt="name"
+                    />
+                  </UAvatarGroup>
+                  <span class="relative flex size-2 shrink-0" aria-hidden="true">
+                    <span class="absolute inset-0 rounded-full bg-success motion-safe:animate-ping opacity-60" />
+                    <span class="relative size-2 rounded-full bg-success" />
+                  </span>
+                </template>
                 <span class="min-w-0 truncate text-sm text-toned">{{ presenceText }}</span>
               </div>
             </Transition>
